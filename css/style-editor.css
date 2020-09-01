@@ -1,0 +1,56 @@
+*{
+    box-sizing: border-box;
+}
+
+body,html{
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.noselect {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.two-col {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+}
+
+.left {
+    height: 100%;
+    width: 300px;
+    border: ridge;
+    background: #eee;
+}
+
+.right {
+    flex: 1;
+}
+
+.toolbox .btn-group {
+    margin: 1em;
+}
+
+.toolbox .btn-group button {font-size: 1.2em;margin: 0.2em;}
+button.toggle {
+    background: #DDE;
+}
+
+button.toggle.on {
+    background: #00F;
+    color: #FFF;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}

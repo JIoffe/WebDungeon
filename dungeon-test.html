@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Dungeon Generation Test</title>
+        <meta charset="UTF-8"/>
+        <style>
+            *{
+                box-sizing: border-box;
+            }
+
+            body,html{
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            canvas{
+                display: block;
+                width: 100%;
+                height: 100%;
+            }
+        </style>
+        <script type="text/javascript">
+        (function(d){
+            //This algorithm is supposed to work on a TILE GRID
+            //Tiles can either be: WALL SOLID
+            const tilePixelSize = 12;
+            const DUNGEON_GRID_W = 140;
+            const DUNGEON_GRID_H = 80;
+
+            const CUBOID_CHANCE = 0.5;
+
+            const DECAY_RATE = 0.125;
+            const FLOOR_CHANCE = 0.80;
+
+            //How many islands are we seeding with to start?
+            const initialCount = 32;
+
+            const tileTypes = {
+                NONE: 0,
+                WALL: 1,
+                WALL_N: 1,
+                WALL_S: 2,
+                WALL_E: 3,
+                WALL_W: 4,
+                FLOOR: 5
+            };
+
+            const directions = {
+                NORTH: 0,
+                SOUTH: 1,
+                EAST: 2,
+                WEST: 3
+            };
+
+            //const dungeon = new Int8Array(DUNGEON_GRID_W * DUNGEON_GRID_H);
+            const dungeon = new Array(DUNGEON_GRID_W * DUNGEON_GRID_H);
+            const islands = new Array(initialCount);
+            //Minimum spanning tree between islands
+            const islandMst = [];
+
+            d.addEventListener('DOMContentLoaded', () => {
+                generate();
+                render();
+            });
+
+            function generate(){
+                const canvas = d.getElementById('viewport'),
+                      rect   = canvas.getBoundingClientRect(),
+                      w      = rect.right - rect.left,
+                      h      = rect.bottom - rect.top;
+
+                const maxDungeonArea = 200000;
+                const maxWidth = 20;
+                const minWidth = 4;
+
+                //There will be a stack to keep track of which tiles to bleed into
+                //stack entries look like this:
+                // x: X COORD
+                // y: Y COORD
+                // d: DIRECTION 
+                // decay: DECAY until it should turn into a floor
+                const stack = [];
+
+                //Start with a few random points to draw floors on
+                for(let i = 0; i < initialCount; ++i){
+                    let x = Math.floor(Math.random() * DUNGEON_GRID_W),
+                        y = Math.floor(Math.random() * DUNGEON_GRID_H);
+
+                    dungeon[x + y * DUNGEON_GRID_W] = {
+                        t: tileTypes.FLOOR,
+                        i: i 
+                    }
+
+                    islands[i] = {
+                        size: 1,
+                        cx: x,
+                        cy: y
+                    }
+
+                    //Chance to either draw a rectangle or flood fill
+                    if(Math.random() < CUBOID_CHANCE){
+                        const islandWidth = Math.floor(minWidth + Math.random() * (maxWidth - minWidth));
+                        const islandHeight = Math.floor(minWidth + Math.random() * (maxWidth - minWidth));
+                        x -= Math.floor(islandWidth * 0.5);
+                        y -= Math.floor(islandHeight * 0.5);
+
+                        for(let y0 = y; y0 < y + islandHeight && y0 >= 0 && y0 < DUNGEON_GRID_H; ++y0){
+                            const colskip = y0 * DUNGEON_GRID_W;
+                            for(let x0 = x; x0 < x + islandWidth && x0 >= 0 && x0 < DUNGEON_GRID_W; ++x0){
+
+                                dungeon[x0 + colskip] = {
+                                    t: tileTypes.FLOOR,
+                                    i: i 
+                                }
+                            }
+                        }
+                    }else{
+                        stack.push({x: x + 1, y: y, d: directions.EAST, decay: 1, i: i});
+                        stack.push({x: x - 1, y: y, d: directions.WEST, decay: 1, i: i});
+                        stack.push({x: x, y: y + 1, d: directions.NORTH, decay: 1, i: i});
+                        stack.push({x: x, y: y - 1, d: directions.SOUTH, decay: 1, i: i});
+                    }
+                }
+
+                //This is like the flood fill algorithm
+                while(!!stack.length){
+                    const entry = stack.pop(),
+                        x = entry.x,
+                        y = entry.y;
+
+                    if(x < 0 || x >= DUNGEON_GRID_W || y < 0 || y >= DUNGEON_GRID_H){
+                        continue;
+                    }
+
+                    if(!!dungeon[x + y * DUNGEON_GRID_W]){
+                        //We reached another island (or another tile in this island)
+                        continue;
+                    }
+
+                    if(entry.decay < 0.1){
+                        continue;
+                    }
+
+                    //chance to continue as a floor, or end as a wall
+                    const decision = Math.random();
+                    if(decision > FLOOR_CHANCE){
+                        //This is wall...
+                    }else{
+                        //Continue bleeding
+                        dungeon[x + y * DUNGEON_GRID_W] = {
+                            t: tileTypes.FLOOR,
+                            i: entry.i
+                        };
+
+                        //Increase area
+                        ++islands[entry.i].size;
+                        islands[entry.i].cx += x;
+                        islands[entry.i].cy += y;
+                        
+                        const decay = entry.decay - DECAY_RATE * Math.random();
+
+                        stack.push({x: x + 1, y: y, d: directions.EAST, decay: decay, i: entry.i});
+                        stack.push({x: x - 1, y: y, d: directions.WEST, decay: decay, i: entry.i});
+                        stack.push({x: x, y: y + 1, d: directions.NORTH, decay: decay, i: entry.i});
+                        stack.push({x: x, y: y - 1, d: directions.SOUTH, decay: decay, i: entry.i});
+                    }
+                }
+
+                //Get island centroids
+                for(let i = islands.length - 1; i >= 0; --i){
+                    islands[i].cx = Math.floor(islands[i].cx/islands[i].size);
+                    islands[i].cy = Math.floor(islands[i].cy/islands[i].size);
+                }
+
+
+                //Compute minimum spanning tree
+                //(Prim)
+                const connectedPoints = new Set([0]);
+                const notConnectedPoints = new Set();
+                for(let i = 1; i < islands.length; ++i)
+                    notConnectedPoints.add(i);
+
+                while(connectedPoints.size < islands.length){
+                    var nearestD = Number.MAX_VALUE;
+                    let v0 = 0;
+                    let v1 = 0;
+
+                    connectedPoints.forEach(i => {
+                        let test0 = islands[i];
+                        notConnectedPoints.forEach(j => {
+                            let test1 = islands[j];
+
+                            const dx = test1.cx - test0.cx,
+                                dy = test1.cy - test0.cy,
+                                d = (dx*dx) + (dy*dy);
+
+                            if(d < nearestD){
+                                v0 = i;
+                                v1 = j;
+                                nearestD = d;
+                            }
+                        })
+                    })
+
+                    connectedPoints.add(v1);
+                    notConnectedPoints.delete(v1);
+                    islandMst.push([v0, v1]);
+                }
+
+
+                //Now connect everything via MST.
+                //(Bresenham's)
+                //void bresenham(x1, x2, y1, y2)
+                // {
+                //    m_new = 2 * (y2 - y1)
+                //    slope_error_new = [Some Initial Value]
+                //    for (x = x1, y = y1; x = 0)  
+                //    {       
+                //       y++;       
+                //       slope_error_new  -= 2 * (x2 - x1);    
+                //    }
+                // }
+            }
+
+            function render(){
+                const canvas = d.getElementById('viewport'),
+                      ctx    = canvas.getContext('2d'),
+                      rect   = canvas.getBoundingClientRect(),
+                      w      = rect.right - rect.left,
+                      h      = rect.bottom - rect.top;
+                      
+                canvas.setAttribute('width', w + '');
+                canvas.setAttribute('height', h + '');
+
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, w, h);
+
+                //draw a faint grid to visualize the grid
+                ctx.strokeStyle = '#888';
+                ctx.beginPath();
+                for(let x = DUNGEON_GRID_W; x >= 0; --x){
+                    ctx.moveTo(x * tilePixelSize, 0);
+                    ctx.lineTo(x * tilePixelSize, DUNGEON_GRID_H * tilePixelSize);
+                }
+                for(let y = DUNGEON_GRID_H; y >= 0; --y){
+                    ctx.moveTo(0, y * tilePixelSize);
+                    ctx.lineTo(DUNGEON_GRID_W * tilePixelSize, y * tilePixelSize);
+                }
+                ctx.stroke();
+
+                const fillStyles = [
+                    '#00F',
+                    '#FF0',
+                    '#F00',
+                    '#0F0',
+                ];
+                ctx.fillStyle = '#00F';
+                ctx.strokeStyle = '#DDF';
+                ctx.strokeWidth = 3;
+
+                for(let x = 0; x < DUNGEON_GRID_W; ++x){
+                    for(let y = 0; y < DUNGEON_GRID_H; ++y){
+                        const tile = dungeon[x + y * DUNGEON_GRID_W];
+                        if(!tile)
+                            continue;
+
+                        switch(tile.t){
+                            case tileTypes.FLOOR:
+                                ctx.fillStyle = fillStyles[tile.i & 3];
+                                ctx.fillRect(x * tilePixelSize, y * tilePixelSize, tilePixelSize, tilePixelSize);
+                                break;
+                            case tileTypes.WALL:
+                                ctx.fillRect(x * tilePixelSize, y * tilePixelSize, tilePixelSize, tilePixelSize);
+                                break;
+                            case tileTypes.WALL_N:
+                                ctx.fillRect(x * tilePixelSize, y * tilePixelSize, tilePixelSize, tilePixelSize);
+                                ctx.beginPath();
+                                ctx.moveTo(x * tilePixelSize, y * tilePixelSize);
+                                ctx.lineTo((x + 1) * tilePixelSize, y * tilePixelSize);
+                                ctx.stroke();
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                }
+
+                //Draw the minimum spanning tree
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#FFF';
+
+                for(let i = 0; i < islandMst.length; ++i){
+                    const edge = islandMst[i],
+                        v0 = islands[edge[0]],
+                        v1 = islands[edge[1]];
+
+                    ctx.beginPath();
+                    ctx.moveTo(v0.cx * tilePixelSize, v0.cy * tilePixelSize);
+                    ctx.lineTo(v1.cx * tilePixelSize, v1.cy * tilePixelSize);
+                    ctx.stroke();
+                }
+
+                //Draw the island numbers
+                ctx.font = "16px Arial";
+                for(let i = islands.length - 1; i >= 0; --i){
+                    ctx.fillStyle = '#000';
+                    ctx.fillText('' + i, islands[i].cx * tilePixelSize + 2, islands[i].cy * tilePixelSize + 2);
+
+                    ctx.fillStyle = '#FFF';
+                    ctx.fillText('' + i, islands[i].cx * tilePixelSize, islands[i].cy * tilePixelSize);
+                   
+                }
+
+                //drawShape(shapes.DIAGONAL_SE, 300, 300);
+                //ctx.fillRect(200,200,tilePixelSize,tilePixelSize);
+                // for(var i = sectors.length - 1; i >= 0; --i){
+                //     const sector = sectors[i];
+                //     ctx.beginPath();
+                //     ctx.moveTo(sector[0].x, sector[1].y);
+                //     for(var j = 0; j < sector.length; ++j){
+                //         ctx.lineTo(sector[j].x, sector[j].y);
+                //     }
+                //     ctx.lineTo(sector[0].x, sector[1].y);
+                //     ctx.fill();
+                //     ctx.stroke();
+                // }
+
+                function drawShape(s, x, y){
+                    ctx.beginPath();
+                    ctx.moveTo(s[0].x + x, s[1].y + y);
+                    for(var i = 0; i < s.length; ++i){
+                        ctx.lineTo(s[i].x + x, s[i].y + y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+
+            function createRandomSector(x, y, w, h, maxWidth, minWidth){
+                let minX = Math.random() * w,
+                    minY = Math.random() * h,
+                    maxX = Math.random() * maxWidth + minX,
+                    maxY = Math.random() * maxWidth + minY;
+
+                if(maxX - minX < minWidth){
+                    maxX = minX + minWidth;
+                }
+
+                if(maxY - minY < minWidth){
+                    maxY = minY + minWidth;
+                }
+
+                if(maxX >= w){
+                    const offset = maxX - w;
+                    minX -= offset;
+                    minY -= offset;
+                }
+
+                if(maxY >= h){
+                    const offset = maxY - h;
+                    minY -= offset;
+                    minY -= offset;
+                }
+
+                console.log(`area: ${(maxX-minX)*(maxY-minY)}`);
+
+                let sector = [
+                    {x: minX, y: minY},
+                    {x: maxX, y: minY},
+                    {x: maxX, y: maxY},
+                    {x: minX, y: maxY}
+                ];
+
+                return sector;
+            }
+            function pointInPolygon(x,y,p){
+
+            }
+        })(document);
+        </script>
+    </head>
+    <body>
+        <canvas id="viewport"></canvas>
+    </body>
+</html>
