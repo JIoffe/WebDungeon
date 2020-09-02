@@ -40,7 +40,13 @@ class SubmeshExport:
         # For most rendering APIs we will need redundant verts if positions are same
         # but UVs are different
         for i, (v0,uv0,norm0) in enumerate(zip(self.verts, self.uvs, self.norms)):
-            if abs(v0.x - v1.x) <= 1e-09 and abs(v0.y - v1.y) <= 1e-09 and abs(v0.z - v1.z) <= 1e-09:
+            v_match = abs(v0.x - v1.x) <= 1e-09 and abs(v0.y - v1.y) <= 1e-09 and abs(v0.z - v1.z) <= 1e-09
+            if not uv1:
+                uv_match = True
+            else:
+                uv_match = abs(uv0.x - uv1.x) <= 1e-09 and abs(uv0.y - uv1.y) <= 1e-09
+                
+            if v_match and uv_match:
                 index = i
                 break    
         
@@ -49,7 +55,12 @@ class SubmeshExport:
             index = len(self.verts)
             self.verts.append(v1)
             self.norms.append(norm1)
-            self.uvs.append(uv1)
+            
+            if uv1:
+                self.uvs.append(uv1.copy())
+            else:
+                self.uvs.append(None)
+                
             self.weights.append(weight1)
             
         self.indices.append(index)
@@ -78,13 +89,14 @@ class SubmeshExport:
                 if not uv:
                     uv = Vector([0,0])
                     
-                flattened.append(uv.x)
-                flattened.append(uv.y)
+                #Round to 3 decimal places
+                flattened.append(round(uv.x, 3))
+                flattened.append(round(uv.y, 3))
             
         self.uvs = flattened
-        
-        flattened = []
-        
+
+
+        flattened = []    
         if any(self.norms):
             if(y_is_up):
                 for norm in self.norms:
@@ -138,7 +150,11 @@ class ExportJSON(Operator, ExportHelper):
         blenderFileName = bpy.path.basename(bpy.context.blend_data.filepath).split('.')[0]
         
         # Keep track of the frame before beginning export
-        originalObjectMode = bpy.context.object.mode
+        if bpy.context.object:
+            originalObjectMode = bpy.context.object.mode
+        else:
+            originalObjectMode = None
+        
         originalFrame = bpy.context.scene.frame_current
         originalSelection = bpy.context.view_layer.objects.active
         
@@ -162,8 +178,9 @@ class ExportJSON(Operator, ExportHelper):
         
         #f.write('{}\n'.format(meshCount))
         
-        bpy.ops.object.mode_set(mode='EDIT')
         for obj in meshes:
+            bpy.context.view_layer.objects.active = obj
+            bpy.ops.object.mode_set(mode='EDIT')
             print('Exporting: {}'.format(obj.name))
             submeshExport = SubmeshExport(obj.name)
             
@@ -189,11 +206,11 @@ class ExportJSON(Operator, ExportHelper):
             # We need triangles! Not even optional.
             bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method='BEAUTY', ngon_method='BEAUTY')
             deform = bm.verts.layers.deform.active
+            uv = bm.loops.layers.uv.active
             
             if not deform:
                 hasDeforms = False
-#            uv = bm.loops.layers.uv.active
-            
+
             # Go every face in the now-triangulated mesh and gather properties per vertex
             for face in bm.faces:
                 for loop in face.loops:
@@ -209,8 +226,15 @@ class ExportJSON(Operator, ExportHelper):
                             if(w > 1e-09):
                                 weight.append(g)
                                 weight.append(w)
-                    
-                    submeshExport.append(vert_pos, weight1=weight)
+                                
+                    # UV is attached to the loop
+                    if uv:
+                        uv_coord = loop[uv].uv
+                    else:
+                        uv_coord = None
+                        
+                                    
+                    submeshExport.append(vert_pos, uv1=uv_coord, weight1=weight)
                     
                         
             #f.write('{}\n'.format(len(coords)))
@@ -231,8 +255,9 @@ class ExportJSON(Operator, ExportHelper):
         
         # Reset frame and mode
         bpy.context.scene.frame_set(originalFrame)
-        bpy.ops.object.mode_set(mode=originalObjectMode)
         bpy.context.view_layer.objects.active = originalSelection
+        if originalObjectMode:
+            bpy.ops.object.mode_set(mode=originalObjectMode)
             
         f = open(filepath, 'w')
         f.write(export.toJson())

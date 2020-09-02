@@ -2,8 +2,9 @@
 const coreAssetList = [
     // '/assets/models/animtest.json',
     // '/assets/animations/animtest_anim.json',
-    '/assets/models/dugeon_player.json',
-    '/assets/animations/dungeon_player_anim.json'
+    '/assets/models/dungeon_player.json',
+    '/assets/animations/dungeon_player_anim.json',
+    '/assets/materials/mail_torso0_mat.json'
 ]
 class AssetsSingleton{
     constructor(){

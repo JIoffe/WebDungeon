@@ -3,6 +3,7 @@ import { ShaderProgram } from "../../shaders/shader-program";
 import { BufferWrapper } from "./buffers";
 import { VertexShaders, FragmentShaders } from "../../shaders/glsl";
 import { mat4 } from "gl-matrix";
+import { Textures } from "../io/textures";
 
 //INFO ON VERTEX FORMATS:
 //LEVEL VERTEX DATA - 20 Bytes
@@ -11,13 +12,15 @@ import { mat4 } from "gl-matrix";
 //             4 * 1 byte, signed byte for NORMAL (4) => 20 (3 bytes data, 1 byte padding)
 //             4 * 1 byte, signed byte for TANGENT (4) => 24 (3 bytes data, 1 byte padding)
 
-export const VERTEX_STRIDE_ACTORS = 20;
+export const VERTEX_STRIDE_ACTORS = 24;
 export const VERTEX_WEIGHT_AFFECTORS = 4;
-//ACTOR VERTEX DATA - Stride 20 bytes
 //INTERLEAVED: 3 * 4 bytes for POSITION (12)
 //             Four Vertex Groups:
-//             4 * (1 byte for vertex group index) => 16
-//             4 * (1 bytes for vertex group weight) => 20
+//             4 * (1 byte for vertex group index) => (16)
+//             4 * (1 bytes for vertex group weight) => (20)
+//             2 * 2 Bytes for TEXCOORDS (24)
+
+
 
 
 export class WebGLResourceManager{
@@ -31,6 +34,7 @@ export class WebGLResourceManager{
 
         this.shaders = [];
         this.meshes = new Map();
+        this.materials = new Map();
         this.armatures = new Map();
     }
 
@@ -38,14 +42,30 @@ export class WebGLResourceManager{
         //Load basic shaders
         const gl = this.gl;
         //SKINNED CHARACTERS - like player characters, enemies
-        this.shaders.push(new ShaderProgram(gl, VertexShaders.skinnedmesh, FragmentShaders.vertex_paint));
+        this.shaders.push(new ShaderProgram(gl, VertexShaders.skinnedmesh, FragmentShaders.textured_lit));
     }
 
     onAssetsDownloaded(assets){
         this.parseActors(assets);
         this.parseArmatures(assets);
+        this.parseMaterials(assets);
     }
 
+    async parseMaterials(assets){
+        const materialAssets = assets.filter(a => a.type === 'MATERIAL');
+        for(let i = 0; i < materialAssets.length; ++i){
+            const asset = materialAssets[i];
+            console.log(`Processing material: ${asset.name}`);
+            console.log(asset);
+
+            const texPtrs = {}
+            Object.keys(asset).forEach(async k => {
+                texPtrs[k] = await Textures.load(this.gl, asset[k].src, !!asset[k].bilinear, !!asset[k].genmips, !!asset[k].yflip)
+            });
+  
+            this.materials.set(asset.name, texPtrs);
+        }
+    }
     parseActors(assets){
         const gl = this.gl;
 
@@ -85,7 +105,9 @@ export class WebGLResourceManager{
                 const nVertices = Math.floor(submesh.verts.length / 3);
                 console.log(`Parsing ${asset.name}:${submesh.name} (${nVertices} verts)...`);
 
+                //BEGIN PER VERTEX DATA
                 for(let k = 0; k < nVertices; ++k){
+                    //Position - the easiest
                     vertexBuffer.addFloat32(submesh.verts[k * 3], submesh.verts[k * 3 + 1], submesh.verts[k * 3 + 2]);
 
                     //Weights for skinning
@@ -108,7 +130,17 @@ export class WebGLResourceManager{
                         let g = VERTEX_WEIGHT_AFFECTORS;
                         while(g--) vertexBuffer.addUint8(0, 0);
                     }
+
+                    //UV Texture coordinates
+                    if(!!submesh.uvs && !!submesh.uvs.length){
+                        vertexBuffer.addFloatAsUint16(submesh.uvs[k * 2] || 0.0, submesh.uvs[k * 2 + 1] || 0.0);
+                    }else{
+                        //Pad with zeroes
+                        vertexBuffer.addUint16(0,0);
+                    }
+                    
                 }
+                //END PER VERTEX DATA
 
                 //indices have to be translated to be as part of the entire VBO
                 let k = submesh.indices.length;
@@ -117,8 +149,6 @@ export class WebGLResourceManager{
                 while(k--) {
                     indexArray[indexOffset++] = submesh.indices[k] + indexAdjustment;
                 }
-
-                console.log(indexAdjustment);
                 indexAdjustment += nVertices;
             }
 
@@ -153,8 +183,6 @@ export class WebGLResourceManager{
                             .reduce((p, c) => p + c, 0);
 
             const data = new Float32Array(armature.data);
-            console.log(armature);
-
             console.log(`Length of animation data expected: ${width * height * 4} (floats). Data in file: ${armature.data.length} (floats). Matches: ${width * height * 4 === armature.data.length}`);
             console.log(`Creating RGBA Texture: ${width} x ${height}`);
 
@@ -199,10 +227,7 @@ export class WebGLResourceManager{
                 rowOffset += anim.keyframes.length;
             });
 
-            console.log(armatureInfo);
-
             this.armatures.set(armature.name.toUpperCase(), armatureInfo);
-
             console.log(`Created data texture for ${armature.name}`);
         }
     }

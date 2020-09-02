@@ -35,7 +35,6 @@ export class Renderer{
         this.resources = new WebGLResourceManager(gl);
 
         console.log('Initialized WebGL Renderer');
-
     }
 
     init(){
@@ -83,15 +82,24 @@ export class Renderer{
         gl.bindBuffer(gl.ARRAY_BUFFER, this.resources.actorsVBuffer);
         gl.enableVertexAttribArray(1);
         gl.enableVertexAttribArray(2);
+        gl.enableVertexAttribArray(3);
         gl.vertexAttribPointer(0, 3, gl.FLOAT, false, VERTEX_STRIDE_ACTORS, 0); //POS
         gl.vertexAttribPointer(1, 4, gl.UNSIGNED_BYTE, false, VERTEX_STRIDE_ACTORS, 12); // VERTEX GROUPS (BONES)
         gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, VERTEX_STRIDE_ACTORS, 16); // WEIGHTS
+        gl.vertexAttribPointer(3, 2, gl.UNSIGNED_SHORT, true, VERTEX_STRIDE_ACTORS, 20); // UVs
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.actorsIBuffer);
 
+        let mat = this.resources.materials.get('mail_torso0');
+        if(!!mat){
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, mat.diffuse);
+            gl.uniform1i(shader.uniformLocations.diffuse, gl.TEXTURE0);
+        }
+
         //Now go through the actors and see what's going on
         //let mesh = this.resources.meshes.get('animtest');
-        let mesh = this.resources.meshes.get('dugeon_player');
+        let mesh = this.resources.meshes.get('dungeon_player');
         if(!!mesh){
             //Bine bone texture if it exists
             if(!!this.resources.armatures.has('ARMATURE')){

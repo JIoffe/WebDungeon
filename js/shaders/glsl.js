@@ -32,11 +32,13 @@ export const VertexShaders = {
     in vec4 ${Attributes.Pos};
     in vec4 ${Attributes.Groups};
     in vec4 ${Attributes.Weights};
+    in vec2 ${Attributes.Tex};
 
     uniform mat4 ${Uniforms.matMVP};
     uniform sampler2D ${Uniforms.boneTex};
     uniform vec3 ${Uniforms.keyframes};
 
+    out vec2 vTexCoords;
     out vec4 vColor;
 
     //Texture arrangement:
@@ -82,7 +84,10 @@ export const VertexShaders = {
         vColor = vec4(smoothstep(0., .5, ${Attributes.Pos}.z),0,0,1);
 
         //Finally apply the full transform
-        gl_Position = ${Uniforms.matMVP} * mix(deform0, deform1, ${Uniforms.keyframes}.z);
+        gl_Position = ${Uniforms.matMVP} * ${Attributes.Pos};// mix(deform0, deform1, ${Uniforms.keyframes}.z);
+
+        //pass through tex coords
+        vTexCoords = ${Attributes.Tex};
     }
     `,
 }
@@ -111,6 +116,19 @@ export const FragmentShaders = {
     void main() {
         //color = texture(${Uniforms.diffuse}, texCoords);
         color = vec4(1,1,1,1);
+    }
+    `,
+
+    textured_lit:
+    `#version 300 es
+    precision mediump float;
+    
+    uniform sampler2D ${Uniforms.diffuse};
+    in vec2 vTexCoords;
+    out vec4 color;
+    
+    void main() {
+        color = texture(${Uniforms.diffuse}, vTexCoords);
     }
     `,
 
