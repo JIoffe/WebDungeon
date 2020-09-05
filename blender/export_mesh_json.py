@@ -2,12 +2,28 @@ import bpy
 import bmesh
 import struct
 import json
+import os
 
 # ExportHelper is a helper class, defines filename and
 # invoke() function which calls the file selector.
 from bpy_extras.io_utils import ExportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
+
+def getCollectionPath(root, obj):
+    collection_hierarchy = []
+
+    while root:
+        found_subfolder = False
+        for child in root.children:
+            if obj in list(child.all_objects):
+                collection_hierarchy.append(child.name)
+                root = child
+        
+        if not found_subfolder:
+            root = None
+
+    return '/'.join(collection_hierarchy)
 
 class MeshExport:
     def __init__(self, name):
@@ -146,6 +162,24 @@ class ExportJSON(Operator, ExportHelper):
         default=True,
     )
 
+    apply_modifiers: BoolProperty(
+        name="Apply Modifiers",
+        description="Applies modifiers before exporting",
+        default=True,
+    )
+    
+    export_separate_files: BoolProperty(
+        name="Export Separately",
+        description="Exports each mesh into a separate file",
+        default=False
+    )
+
+    collections_to_subfolders: BoolProperty(
+        name="Collections as Subfolders",
+        description="Exports individual files to subfolders matching collection hierarchy",
+        default=True,
+    )
+
     def write_json(self, context, filepath, y_is_up):
         blenderFileName = bpy.path.basename(bpy.context.blend_data.filepath).split('.')[0]
         
@@ -174,9 +208,8 @@ class ExportJSON(Operator, ExportHelper):
         meshes      = list(filter(lambda m: m.type == 'MESH', exportCollection.all_objects))
         meshCount   = len(meshes)
         
-        export = MeshExport(blenderFileName)
-        
-        #f.write('{}\n'.format(meshCount))
+        if not self.export_separate_files:
+            export = MeshExport(blenderFileName)
         
         for obj in meshes:
             bpy.context.view_layer.objects.active = obj
@@ -192,21 +225,36 @@ class ExportJSON(Operator, ExportHelper):
             else:
                 print('{} is not deformed by an armature. Weight data will be empty.'.format(obj.name))
                 
-            #next(obj for obj in exportCollection.all_objects if obj.type=='ARMATURE')
-            
-            # work with a scratch copy in memory
-            depsgraph = context.evaluated_depsgraph_get()
-            
-            # Invoke to_mesh() for evaluated object and apply modifiers (eg. mirror)
-            object_eval = obj.evaluated_get(depsgraph)
-            m = object_eval.to_mesh()
+            # Let the dependency graph take care of applying modifiers; deforms should stay intact
+            depsgraph = bpy.context.evaluated_depsgraph_get()
             bm = bmesh.new()
-            bm.from_mesh(m)
+            bm.from_object( obj, depsgraph )
+            bm.verts.ensure_lookup_table()
+
+            # context.evaluated_depsgraph_get() will apply all modifiers and drivers
+            # for the object, but that tends to collapse deforms on the vertices
+            # Just to be safe, apply modifiers on a scratch copy in memory
+            # if self.apply_modifiers:
+
+            # #next(obj for obj in exportCollection.all_objects if obj.type=='ARMATURE')
+            
+            # # work with a scratch copy in memory
+            # depsgraph = context.evaluated_depsgraph_get()
+            
+            # # Invoke to_mesh() for evaluated object and apply modifiers (eg. mirror)
+            # #object_eval = obj.evaluated_get(depsgraph)
+            # object_eval = obj
+            # m = object_eval.to_mesh()
+            # bm = bmesh.new()
+            # bm.from_mesh(m)
             
             # We need triangles! Not even optional.
             bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method='BEAUTY', ngon_method='BEAUTY')
-            deform = bm.verts.layers.deform.active
             uv = bm.loops.layers.uv.active
+
+            if hasDeforms:
+                bm.verts.layers.deform.verify()
+                deform = bm.verts.layers.deform.active
             
             if not deform:
                 hasDeforms = False
@@ -235,23 +283,29 @@ class ExportJSON(Operator, ExportHelper):
                         
                                     
                     submeshExport.append(vert_pos, uv1=uv_coord, weight1=weight)
-                    
-                        
-            #f.write('{}\n'.format(len(coords)))
-            #for coord in coords:
-            #    f.write('{} {} {}\n'.format(coord.x, coord.y, coord.z))
             
             # release extra mesh data from memory
             bm.free()
-            object_eval.to_mesh_clear()
             
             # Add compiled data to output
             submeshExport.build(y_is_up)
-            export.submeshes.append(submeshExport)
             
-        
-        # actually write the mesh JSON to disc
-        print('Writing Mesh as JSON to File {}...'.format(filepath))
+            if self.export_separate_files:
+                submeshExport.type = 'SUBMESH'
+                print(filepath)
+
+                if self.collections_to_subfolders:
+                    subfolder_path = getCollectionPath(exportCollection, obj);
+                    submeshPath = os.path.dirname(filepath) + '\{}\{}.json'.format(subfolder_path, submeshExport.name)
+                else:
+                    submeshPath = os.path.dirname(filepath) + '\{}.json'.format(submeshExport.name)
+
+                f = open(submeshPath, 'w')
+                f.write(submeshExport.toJson())
+                f.close()
+                self.report({"INFO"}, 'Exported {}'.format(submeshPath))
+            else:
+                export.submeshes.append(submeshExport)
         
         # Reset frame and mode
         bpy.context.scene.frame_set(originalFrame)
@@ -259,12 +313,16 @@ class ExportJSON(Operator, ExportHelper):
         if originalObjectMode:
             bpy.ops.object.mode_set(mode=originalObjectMode)
             
-        f = open(filepath, 'w')
-        f.write(export.toJson())
-        f.close()
-        
-        print('Finished writing to {}'.format(filepath))
-        self.report({"INFO"}, 'Wrote to {}'.format(filepath))
+        if not self.export_separate_files:
+            # actually write the mesh JSON to disc
+            print('Writing Mesh as JSON to File {}...'.format(filepath))
+            f = open(filepath, 'w')
+            f.write(export.toJson())
+            f.close()
+            
+            print('Finished writing to {}'.format(filepath))
+            self.report({"INFO"}, 'Wrote to {}'.format(filepath))
+            
         return {'FINISHED'}
 
     def execute(self, context):
