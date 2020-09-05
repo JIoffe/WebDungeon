@@ -1,0 +1,1 @@
+{"name": "human0", "type": "MATERIAL", "textures": { "diffuse": {"src": "/assets/img/player_base.png", "bilinear": true, "genmips": true, "yflip":true}}}

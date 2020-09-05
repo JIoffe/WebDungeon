@@ -57,6 +57,9 @@ export class WebGLResourceManager{
             case 'ARMATURE':
                 await this.parseArmatures(asset);
                 break;
+            case 'MATERIAL':
+                await this.parseMaterials(asset);
+                break;
             default:
                 break;
         }
@@ -96,16 +99,22 @@ export class WebGLResourceManager{
     }
 
     async parseMaterials(...materials){
-        for(let i = 0; i < materials.length; ++i){
+        materials = materials.filter(a => a.type === 'MATERIAL');
+
+        let i = materials.length;
+        while(i--){
             const asset = materials[i];
             console.log(`Processing material: ${asset.name}`);
 
             const texPtrs = {}
-            Object.keys(asset.textures).forEach(async k => {
+            const textureTypes = Object.keys(asset.textures);
+
+            let j = textureTypes.length;
+            while(j--) {
+                const k = textureTypes[j];
                 texPtrs[k] = await Textures.load(this.gl, asset.textures[k].src, 
                     !!asset.textures[k].bilinear, !!asset.textures[k].genmips, !!asset.textures[k].yflip);
-            });
-  
+            }
             this.materials.set(asset.name, texPtrs);
         }
     }
@@ -148,32 +157,17 @@ export class WebGLResourceManager{
 
             const dataTexture = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, dataTexture);
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
 
             //Using 32Bit float format for now    
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0,
                 gl.RGBA, gl.FLOAT, data);
 
-            //No mipmaps or filtering for data texture, only read in vertex shader
+            //No mipmaps or filtering for data texture, only read in vertex shader with texel lookup
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-            // const armatureInfo = {
-            //     name: armature.name,
-            //     animations: armature.animations,
-            //     bones: armature.bones,
-            //     tex: dataTexture
-            // };
-
-            // //Do a little animation pre-processing
-            // let rowOffset = 0;
-            // armatureInfo.animations.forEach(anim => {
-            //     anim.keyframes = anim.keyframes.map(kf => kf - 1);
-            //     anim.maxFrame = anim.keyframes.reduce((p, c) => Math.max(p, c), 0);
-            //     anim.rowOffset = rowOffset;
-            //     rowOffset += anim.keyframes.length;
-            // });
 
             this.armatures[armature.name.toUpperCase()] = dataTexture;
             console.log(`Created data texture for ${armature.name}`);

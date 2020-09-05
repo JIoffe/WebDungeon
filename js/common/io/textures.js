@@ -80,7 +80,7 @@ export class Textures{
                 if(generateMipMaps)
                     gl.generateMipmap(gl.TEXTURE_2D);
                 
-                gl.bindTexture(gl.TEXTURE_2D, null);           
+                gl.bindTexture(gl.TEXTURE_2D, null);     
                 resolve(tex);
             };
     

@@ -282,7 +282,11 @@ class ExportJSON(Operator, ExportHelper):
 
                 if self.collections_to_subfolders:
                     subfolder_path = getCollectionPath(exportCollection, obj);
-                    submeshPath = os.path.dirname(filepath) + '\{}\{}.json'.format(subfolder_path, submeshExport.name)
+                    folder = os.path.dirname(filepath) + '\\' + subfolder_path
+                    if not os.path.exists(folder):
+                        os.makedirs(folder)
+                        
+                    submeshPath = '{}\{}.json'.format(folder, submeshExport.name)
                 else:
                     submeshPath = os.path.dirname(filepath) + '\{}.json'.format(submeshExport.name)
 
