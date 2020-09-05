@@ -1,0 +1,1 @@
+{"name": "leather0_legs", "type": "MATERIAL", "textures": { "diffuse": {"src": "/assets/img/leather0_legs.png", "bilinear": true, "genmips": true, "yflip":true}}}

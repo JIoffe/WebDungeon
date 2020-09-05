@@ -1,0 +1,7 @@
+{
+	"type": "ASSETDEF",
+	"category": "PLAYER",
+	"name": "mail0_torso",
+	"mesh": "/assets/models/gear/mail0_torso.json",
+	"mat": "/assets/materials/mail0_torso.json"
+}

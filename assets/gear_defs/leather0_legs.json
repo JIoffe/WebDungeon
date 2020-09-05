@@ -1,0 +1,7 @@
+{
+	"type": "ASSETDEF",
+	"category": "PLAYER",
+	"name": "leather0_legs",
+	"mesh": "/assets/models/gear/leather0_legs.json",
+	"mat": "/assets/materials/leather0_legs.json"
+}

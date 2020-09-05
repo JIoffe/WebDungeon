@@ -1,0 +1,7 @@
+{
+	"type": "ASSETDEF",
+	"category": "PLAYER",
+	"name": "bare_arm",
+	"mesh": "/assets/models/gear/bare_arm.json",
+	"mat": "/assets/materials/mail0_torso.json"
+}

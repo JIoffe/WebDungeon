@@ -1,7 +1,7 @@
 import { KeyedMutex } from "../util/concurrency";
 
 const texIdMap = new Map();
-const texIdMutex = new KeyedMutex
+const texIdMutex = new KeyedMutex;
 
 export class Textures{
     static clearCache(){

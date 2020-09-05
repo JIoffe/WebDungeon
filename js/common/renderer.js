@@ -1,9 +1,6 @@
 import {mat4, vec3, quat, mat3} from 'gl-matrix'
-import { ShaderProgram } from '../shaders/shader-program';
-import { VertexShaders, FragmentShaders } from '../shaders/glsl';
-import { BufferWrapper } from './rendering/buffers';
-import { WebGLResourceManager, VERTEX_STRIDE_ACTORS } from './rendering/resource-management';
-import { AnimationController } from './rendering/animation';
+import { WebGLResourceManager } from './rendering/resource-management';
+import { VERTEX_STRIDE_ACTORS } from './rendering/mesh/mesh-constants';
 
 const NEAR_CLIP = 0.1;
 const FAR_CLIP = 100;
@@ -14,15 +11,11 @@ var gl = null;
 var matMVP = mat4.create();
 var matVP = mat4.create();
 
-//INFO ON VERTEX FORMATS:
-//LEVEL VERTEX DATA - 24 Bytes
-//Interleaved: 3 * 4 bytes for POSITION (12)
-//             2 * 2 bytes, normalized for TEX COORDS (4) => 16
-//             4 * 1 byte, signed byte for NORMAL (4) => 20 (3 bytes data, 1 byte padding)
-//             4 * 1 byte, signed byte for TANGENT (4) => 24 (3 bytes data, 1 byte padding)
+const MAX_TO_RENDER = 512;
+var pvs = new Array(MAX_TO_RENDER);
 
-
-const testAnimationController = new AnimationController();
+//Variables we will use
+let i = 0;
 
 export class Renderer{
     constructor(viewportCanvas){
@@ -35,6 +28,7 @@ export class Renderer{
         this.resources = new WebGLResourceManager(gl);
 
         console.log('Initialized WebGL Renderer');
+        console.log(`Max GL Texture size: ${gl.getParameter(gl.MAX_TEXTURE_SIZE)}`);
     }
 
     init(){
@@ -75,11 +69,16 @@ export class Renderer{
         mat4.mul(matVP, projMatrix, viewMatrix);
 
         let shader = shaders[0];
+
+
+        /////////////////////////////////////////////////////////////
+        // SKINNED ACTORS - Players, monsters, etc.
+        /////////////////////////////////////////////////////////////
+        //Bind common state for all skinned characters
         gl.useProgram(shader.program);
         gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matVP);
 
-        //Bind common state for all skinned characters
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.resources.actorsVBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.resources.actorsVBuffer.buffer);
         gl.enableVertexAttribArray(1);
         gl.enableVertexAttribArray(2);
         gl.enableVertexAttribArray(3);
@@ -88,37 +87,80 @@ export class Renderer{
         gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, VERTEX_STRIDE_ACTORS, 16); // WEIGHTS
         gl.vertexAttribPointer(3, 2, gl.UNSIGNED_SHORT, true, VERTEX_STRIDE_ACTORS, 20); // UVs
 
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.actorsIBuffer);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.actorsIBuffer.buffer);
 
-        let mat = this.resources.materials.get('mail_torso0');
-        if(!!mat){
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, mat.diffuse);
-            gl.uniform1i(shader.uniformLocations.diffuse, gl.TEXTURE0);
+        //RENDER ALL PLAYERS - assume players are always visible
+        let arm = this.resources.armatures.ARM_PLAYER;
+        if(!!arm){
+            gl.activeTexture(gl.TEXTURE2);
+            gl.bindTexture(gl.TEXTURE_2D, arm);
+            gl.uniform1i(shader.uniformLocations.boneTex, 2);
         }
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.uniform1i(shader.uniformLocations.diffuse, 0);
+
+        i = scene.players.length;
+        while(i--){
+            const p = scene.players[i];
+            const kf = p.anim.loop(dT * 0.02);
+            gl.uniform3fv(shader.uniformLocations.keyframes, kf);
+
+            let j = p.gear.length;
+            while(j--){
+                if(!p.gear[j])
+                    continue;
+
+                const a = this.resources.assets[p.gear[j]];
+
+                if(!a)
+                    continue;
+                
+                gl.bindTexture(gl.TEXTURE_2D, a.mat.diffuse);
+                this.drawMesh(a.mesh);
+            }
+        }
+
+        // gl.activeTexture(gl.TEXTURE0);
+        // //gl.bindTexture(gl.TEXTURE_2D, mat.diffuse);
+        // gl.bindTexture(gl.TEXTURE_2D, this.resources.playerTexAtlas.tex)
+        // gl.uniform1i(shader.uniformLocations.diffuse, 0);
+
+        // let mat = this.resources.materials.get('mail_torso0');
+        // if(!!mat){
+            // gl.activeTexture(gl.TEXTURE0);
+            // //gl.bindTexture(gl.TEXTURE_2D, mat.diffuse);
+            // gl.bindTexture(gl.TEXTURE_2D, playerTexAtlas.tex)
+            // gl.uniform1i(shader.uniformLocations.diffuse, gl.TEXTURE0);
+        // }
 
         //Now go through the actors and see what's going on
         //let mesh = this.resources.meshes.get('animtest');
-        let mesh = this.resources.meshes.get('dungeon_player');
-        if(!!mesh){
-            //Bine bone texture if it exists
-            if(!!this.resources.armatures.has('ARMATURE')){
-                const a = this.resources.armatures.get('ARMATURE');
-                if(!testAnimationController.anim){
-                    testAnimationController.set(a.animations[4]);
-                }
+        // let mesh = this.resources.meshes.get('dungeon_player');
+        // if(!!mesh){
+        //     //Bine bone texture if it exists
+        //     if(!!this.resources.armatures.has('ARMATURE')){
+        //         const a = this.resources.armatures.get('ARM_PLAYER');
+        //         if(!testAnimationController.anim){
+        //             testAnimationController.set(a.animations[4]);
+        //         }
 
-                gl.activeTexture(gl.TEXTURE2);
-                gl.bindTexture(gl.TEXTURE_2D, a.tex);
-                gl.uniform1i(shader.uniformLocations.boneTex, 2);
+        //         gl.activeTexture(gl.TEXTURE2);
+        //         gl.bindTexture(gl.TEXTURE_2D, a.tex);
+        //         gl.uniform1i(shader.uniformLocations.boneTex, 2);
 
-                const kf = testAnimationController.loop(dT * 0.02);
-                gl.uniform3fv(shader.uniformLocations.keyframes, kf);
-            }
+        //         const kf = testAnimationController.loop(dT * 0.02);
+        //         gl.uniform3fv(shader.uniformLocations.keyframes, kf);
+        //     }
 
 
-            let i = mesh.length;
-            while(i--) gl.drawElements(gl.TRIANGLES, mesh[i][0], gl.UNSIGNED_SHORT, mesh[i][1]);
-        }
+        //     let i = mesh.length;
+        //     while(i--) gl.drawElements(gl.TRIANGLES, mesh[i][0], gl.UNSIGNED_SHORT, mesh[i][1]);
+        // }
+    }
+
+    drawMesh(m){
+        let s = m.length; //s for submesh
+        while(s--) gl.drawElements(gl.TRIANGLES, m[s][0], gl.UNSIGNED_SHORT, m[s][1]);
     }
 }

@@ -84,7 +84,7 @@ export const VertexShaders = {
         vColor = vec4(smoothstep(0., .5, ${Attributes.Pos}.z),0,0,1);
 
         //Finally apply the full transform
-        gl_Position = ${Uniforms.matMVP} * ${Attributes.Pos};// mix(deform0, deform1, ${Uniforms.keyframes}.z);
+        gl_Position = ${Uniforms.matMVP} * mix(deform0, deform1, ${Uniforms.keyframes}.z);
 
         //pass through tex coords
         vTexCoords = ${Attributes.Tex};

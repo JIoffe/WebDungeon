@@ -1,41 +1,35 @@
-import { Assets } from "../io/assets";
 import { ShaderProgram } from "../../shaders/shader-program";
-import { BufferWrapper } from "./buffers";
 import { VertexShaders, FragmentShaders } from "../../shaders/glsl";
 import { mat4 } from "gl-matrix";
 import { Textures } from "../io/textures";
+import { RestClient } from "../http/rest-client";
+import { BufferWrapper } from "../util/array-buffer-wrapper";
+import { PooledBuffer } from "./pooled-buffer";
+import { MessageBus } from "../messaging/message-bus";
+import { MessageType } from "../messaging/message-type";
+import { KeyedMutex } from "../util/concurrency";
+import { parseActorMeshes } from "./mesh/mesh-parsing";
 
-//INFO ON VERTEX FORMATS:
-//LEVEL VERTEX DATA - 20 Bytes
-//Interleaved: 3 * 4 bytes for POSITION (12)
-//             2 * 2 bytes, normalized for TEX COORDS (4) => 16
-//             4 * 1 byte, signed byte for NORMAL (4) => 20 (3 bytes data, 1 byte padding)
-//             4 * 1 byte, signed byte for TANGENT (4) => 24 (3 bytes data, 1 byte padding)
-
-export const VERTEX_STRIDE_ACTORS = 24;
-export const VERTEX_WEIGHT_AFFECTORS = 4;
-//INTERLEAVED: 3 * 4 bytes for POSITION (12)
-//             Four Vertex Groups:
-//             4 * (1 byte for vertex group index) => (16)
-//             4 * (1 bytes for vertex group weight) => (20)
-//             2 * 2 Bytes for TEXCOORDS (24)
-
-
-
+const assetMutex = new KeyedMutex
 
 export class WebGLResourceManager{
     constructor(gl){
         this.gl = gl;
 
-        Assets.subscribe(this);
+        this.actorsVBuffer = new PooledBuffer(gl, gl.ARRAY_BUFFER);
+        this.actorsIBuffer = new PooledBuffer(gl, gl.ELEMENT_ARRAY_BUFFER)
 
-        this.actorsVBuffer = gl.createBuffer();
-        this.actorsIBuffer = gl.createBuffer();
-
+        this.assets = {};
+        
         this.shaders = [];
-        this.meshes = new Map();
+        this.meshes = {};
+
         this.materials = new Map();
-        this.armatures = new Map();
+
+        this.armatures = {};
+
+        MessageBus.subscribe(MessageType.PLAYER_ADDED, data => this.onPlayerAdded(data))
+        MessageBus.subscribe(MessageType.ASSET_DOWNLOADED, asset => this.onAssetLoaded(asset));
     }
 
     init(){
@@ -45,124 +39,78 @@ export class WebGLResourceManager{
         this.shaders.push(new ShaderProgram(gl, VertexShaders.skinnedmesh, FragmentShaders.textured_lit));
     }
 
-    onAssetsDownloaded(assets){
-        this.parseActors(assets);
-        this.parseArmatures(assets);
-        this.parseMaterials(assets);
+    onPlayerAdded(data){
+        //Parse the player data to see if we want for anything
+        data.gear.filter(slot => !!slot).forEach(slot => this.downloadAsset(`/assets/gear_defs/${slot}.json`));
     }
 
-    async parseMaterials(assets){
-        const materialAssets = assets.filter(a => a.type === 'MATERIAL');
-        for(let i = 0; i < materialAssets.length; ++i){
-            const asset = materialAssets[i];
+    async downloadAsset(path){
+        const asset = await RestClient.getJSON(path);
+        await this.onAssetLoaded(asset);
+    }
+
+    async onAssetLoaded(asset){
+        switch(asset.type){
+            case 'ASSETDEF':
+                await this.parseAssetDef(asset);
+                break;
+            case 'ARMATURE':
+                await this.parseArmatures(asset);
+                break;
+            default:
+                break;
+        }
+    }
+
+    async parseAssetDef(def){
+        const lock = await assetMutex.acquire(def.name);
+
+        try{
+            if(!!this.assets[def.name])
+                return;
+
+            const mesh = await RestClient.getJSON(def.mesh);
+            const mat = await RestClient.getJSON(def.mat);
+
+            await this.parseMaterials(mat);
+
+            if(!this.meshes[mesh.name]){
+                let meshResult;
+                switch(def.category){
+                    case 'PLAYER':
+                        meshResult = parseActorMeshes(this.actorsVBuffer, this.actorsIBuffer, mesh);
+                        break;
+                }
+
+                this.meshes = {...this.meshes, ...meshResult};
+            }
+
+            this.assets[def.name] = {
+                mat: this.materials.get(mat.name),
+                mesh: this.meshes[mesh.name]
+            };
+        }
+        finally{
+            lock.release();
+        }
+    }
+
+    async parseMaterials(...materials){
+        for(let i = 0; i < materials.length; ++i){
+            const asset = materials[i];
             console.log(`Processing material: ${asset.name}`);
-            console.log(asset);
 
             const texPtrs = {}
-            Object.keys(asset).forEach(async k => {
-                texPtrs[k] = await Textures.load(this.gl, asset[k].src, !!asset[k].bilinear, !!asset[k].genmips, !!asset[k].yflip)
+            Object.keys(asset.textures).forEach(async k => {
+                texPtrs[k] = await Textures.load(this.gl, asset.textures[k].src, 
+                    !!asset.textures[k].bilinear, !!asset.textures[k].genmips, !!asset.textures[k].yflip);
             });
   
             this.materials.set(asset.name, texPtrs);
         }
     }
-    parseActors(assets){
-        const gl = this.gl;
 
-        //The first step is to go through the data to see how much VRAM to allocate
-        const actorAssets = assets.filter(a => a.type === 'MESH');
-        const stride = VERTEX_STRIDE_ACTORS;
-
-        let vertexBufferSize = 0;
-        let indexArrayLength = 0;
-
-        for(let i = 0; i < actorAssets.length; ++i){
-            const asset = actorAssets[i];
-            for(let j = 0; j < asset.submeshes.length; ++j){
-               const submesh = asset.submeshes[j]; 
-
-               const nVertices = Math.floor(submesh.verts.length / 3);
-               vertexBufferSize += nVertices * stride;
-               indexArrayLength += submesh.indices.length;
-            }
-        }
-
-        const vertexBuffer = new BufferWrapper(vertexBufferSize);
-        const indexArray = new Uint16Array(indexArrayLength);
-
-        //Adjust indices to fit with what's in the VBO so far
-        let indexAdjustment = 0;
-        let indexOffset = 0;
-
-        //Now populate the buffers
-        for(let i = 0; i < actorAssets.length; ++i){
-            const asset = actorAssets[i];
-            const meshInfo = new Array(asset.submeshes.length);
-
-            for(let j = 0; j < asset.submeshes.length; ++j){
-                const submesh = asset.submeshes[j];
-
-                const nVertices = Math.floor(submesh.verts.length / 3);
-                console.log(`Parsing ${asset.name}:${submesh.name} (${nVertices} verts)...`);
-
-                //BEGIN PER VERTEX DATA
-                for(let k = 0; k < nVertices; ++k){
-                    //Position - the easiest
-                    vertexBuffer.addFloat32(submesh.verts[k * 3], submesh.verts[k * 3 + 1], submesh.verts[k * 3 + 2]);
-
-                    //Weights for skinning
-                    if(!!submesh.weights[k]){
-                        //Weights are organized: [ group, weight, group, weight, ... ]
-                        const weights = submesh.weights[k];
-                        let g = 0;
-                        while(g < VERTEX_WEIGHT_AFFECTORS * 2){
-                            vertexBuffer.addUint8(weights[g] || 0);
-                            g += 2;
-                        }
-
-                        g = 1;
-                        while(g < VERTEX_WEIGHT_AFFECTORS * 2){
-                            vertexBuffer.addFloatAsUint8(weights[g] || 0);
-                            g += 2;
-                        }
-                    }else{
-                        //Pad with zeroes
-                        let g = VERTEX_WEIGHT_AFFECTORS;
-                        while(g--) vertexBuffer.addUint8(0, 0);
-                    }
-
-                    //UV Texture coordinates
-                    if(!!submesh.uvs && !!submesh.uvs.length){
-                        vertexBuffer.addFloatAsUint16(submesh.uvs[k * 2] || 0.0, submesh.uvs[k * 2 + 1] || 0.0);
-                    }else{
-                        //Pad with zeroes
-                        vertexBuffer.addUint16(0,0);
-                    }
-                    
-                }
-                //END PER VERTEX DATA
-
-                //indices have to be translated to be as part of the entire VBO
-                let k = submesh.indices.length;
-                meshInfo[j] = [k, indexOffset * 2];
-
-                while(k--) {
-                    indexArray[indexOffset++] = submesh.indices[k] + indexAdjustment;
-                }
-                indexAdjustment += nVertices;
-            }
-
-            this.meshes.set(asset.name, meshInfo);
-        }
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.actorsVBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, vertexBuffer.buffer, gl.STATIC_DRAW);
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.actorsIBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexArray, gl.STATIC_DRAW);
-    }
-
-    parseArmatures(assets){
+    parseArmatures(...assets){
         const gl = this.gl;
 
         const armatureAssets = assets.filter(a => a.type === 'ARMATURE');
@@ -211,23 +159,23 @@ export class WebGLResourceManager{
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-            const armatureInfo = {
-                name: armature.name,
-                animations: armature.animations,
-                bones: armature.bones,
-                tex: dataTexture
-            };
+            // const armatureInfo = {
+            //     name: armature.name,
+            //     animations: armature.animations,
+            //     bones: armature.bones,
+            //     tex: dataTexture
+            // };
 
-            //Do a little animation pre-processing
-            let rowOffset = 0;
-            armatureInfo.animations.forEach(anim => {
-                anim.keyframes = anim.keyframes.map(kf => kf - 1);
-                anim.maxFrame = anim.keyframes.reduce((p, c) => Math.max(p, c), 0);
-                anim.rowOffset = rowOffset;
-                rowOffset += anim.keyframes.length;
-            });
+            // //Do a little animation pre-processing
+            // let rowOffset = 0;
+            // armatureInfo.animations.forEach(anim => {
+            //     anim.keyframes = anim.keyframes.map(kf => kf - 1);
+            //     anim.maxFrame = anim.keyframes.reduce((p, c) => Math.max(p, c), 0);
+            //     anim.rowOffset = rowOffset;
+            //     rowOffset += anim.keyframes.length;
+            // });
 
-            this.armatures.set(armature.name.toUpperCase(), armatureInfo);
+            this.armatures[armature.name.toUpperCase()] = dataTexture;
             console.log(`Created data texture for ${armature.name}`);
         }
     }

@@ -229,24 +229,9 @@ class ExportJSON(Operator, ExportHelper):
             depsgraph = bpy.context.evaluated_depsgraph_get()
             bm = bmesh.new()
             bm.from_object( obj, depsgraph )
+
+            # layers should work properly
             bm.verts.ensure_lookup_table()
-
-            # context.evaluated_depsgraph_get() will apply all modifiers and drivers
-            # for the object, but that tends to collapse deforms on the vertices
-            # Just to be safe, apply modifiers on a scratch copy in memory
-            # if self.apply_modifiers:
-
-            # #next(obj for obj in exportCollection.all_objects if obj.type=='ARMATURE')
-            
-            # # work with a scratch copy in memory
-            # depsgraph = context.evaluated_depsgraph_get()
-            
-            # # Invoke to_mesh() for evaluated object and apply modifiers (eg. mirror)
-            # #object_eval = obj.evaluated_get(depsgraph)
-            # object_eval = obj
-            # m = object_eval.to_mesh()
-            # bm = bmesh.new()
-            # bm.from_mesh(m)
             
             # We need triangles! Not even optional.
             bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method='BEAUTY', ngon_method='BEAUTY')
@@ -257,6 +242,7 @@ class ExportJSON(Operator, ExportHelper):
                 deform = bm.verts.layers.deform.active
             
             if not deform:
+                self.report({'WARNING'}, '{} has armature modifier but no vertex weights'.format(obj.name))
                 hasDeforms = False
 
             # Go every face in the now-triangulated mesh and gather properties per vertex
