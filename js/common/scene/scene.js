@@ -1,10 +1,14 @@
 import { MessageBus } from "../messaging/message-bus";
 import { MessageType } from "../messaging/message-type";
 import { Animations } from "../rendering/animation";
+import { Input } from "../input/input";
+
+const PLAYER_SPEED = 0.04;
 
 export class Scene{
     constructor(){
         this.players = [];
+        this.localPlayer = null;
 
         MessageBus.subscribe(MessageType.PLAYER_ADDED, data => this.onPlayerAdded(data))
     }
@@ -26,5 +30,12 @@ export class Scene{
         player.anim.set('Idle');
 
         this.players.push(player);
+        this.localPlayer = player;
+    }
+
+    update(time, dT){
+        if(!!this.localPlayer){
+            this.localPlayer.pos[0] += dT * Input.axisH * PLAYER_SPEED;
+        }
     }
 }

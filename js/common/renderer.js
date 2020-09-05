@@ -37,8 +37,8 @@ export class Renderer{
         gl.enableVertexAttribArray(0);
 
         gl.enable(gl.DEPTH_TEST);
-        // gl.enable(gl.CULL_FACE);
-        // gl.cullFace(gl.BACK);
+        gl.enable(gl.CULL_FACE);
+        gl.cullFace(gl.FRONT);
     }
 
     render(scene, camera, time, dT){
@@ -76,7 +76,6 @@ export class Renderer{
         /////////////////////////////////////////////////////////////
         //Bind common state for all skinned characters
         gl.useProgram(shader.program);
-        gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matVP);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.resources.actorsVBuffer.buffer);
         gl.enableVertexAttribArray(1);
@@ -103,8 +102,21 @@ export class Renderer{
         i = scene.players.length;
         while(i--){
             const p = scene.players[i];
+
+            //Update position in shader
+            mat4.fromTranslation(matMVP, p.pos);
+            mat4.multiply(matMVP, matVP, matMVP)
+            gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matMVP);
+
             const kf = p.anim.loop(dT * 0.02);
             gl.uniform3fv(shader.uniformLocations.keyframes, kf);
+
+            //Base skin for face/arms/etc.
+            let mat = this.resources.materials[p.skin]
+            if(!!mat)
+                gl.bindTexture(gl.TEXTURE_2D, mat.diffuse);
+
+            this.drawMesh(this.resources.meshes[p.head]);
 
             let j = p.gear.length;
             while(j--){
@@ -120,46 +132,10 @@ export class Renderer{
                 this.drawMesh(a.mesh);
             }
         }
-
-        // gl.activeTexture(gl.TEXTURE0);
-        // //gl.bindTexture(gl.TEXTURE_2D, mat.diffuse);
-        // gl.bindTexture(gl.TEXTURE_2D, this.resources.playerTexAtlas.tex)
-        // gl.uniform1i(shader.uniformLocations.diffuse, 0);
-
-        // let mat = this.resources.materials.get('mail_torso0');
-        // if(!!mat){
-            // gl.activeTexture(gl.TEXTURE0);
-            // //gl.bindTexture(gl.TEXTURE_2D, mat.diffuse);
-            // gl.bindTexture(gl.TEXTURE_2D, playerTexAtlas.tex)
-            // gl.uniform1i(shader.uniformLocations.diffuse, gl.TEXTURE0);
-        // }
-
-        //Now go through the actors and see what's going on
-        //let mesh = this.resources.meshes.get('animtest');
-        // let mesh = this.resources.meshes.get('dungeon_player');
-        // if(!!mesh){
-        //     //Bine bone texture if it exists
-        //     if(!!this.resources.armatures.has('ARMATURE')){
-        //         const a = this.resources.armatures.get('ARM_PLAYER');
-        //         if(!testAnimationController.anim){
-        //             testAnimationController.set(a.animations[4]);
-        //         }
-
-        //         gl.activeTexture(gl.TEXTURE2);
-        //         gl.bindTexture(gl.TEXTURE_2D, a.tex);
-        //         gl.uniform1i(shader.uniformLocations.boneTex, 2);
-
-        //         const kf = testAnimationController.loop(dT * 0.02);
-        //         gl.uniform3fv(shader.uniformLocations.keyframes, kf);
-        //     }
-
-
-        //     let i = mesh.length;
-        //     while(i--) gl.drawElements(gl.TRIANGLES, mesh[i][0], gl.UNSIGNED_SHORT, mesh[i][1]);
-        // }
     }
 
     drawMesh(m){
+        if(!m) return;
         let s = m.length; //s for submesh
         while(s--) gl.drawElements(gl.TRIANGLES, m[s][0], gl.UNSIGNED_SHORT, m[s][1]);
     }

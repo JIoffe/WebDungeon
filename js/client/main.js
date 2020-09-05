@@ -7,9 +7,10 @@ import { MessageBus } from "../common/messaging/message-bus";
 import { MessageType } from "../common/messaging/message-type";
 import { RestClient } from "../common/http/rest-client";
 import { Animations } from "../common/rendering/animation";
+import { DegToRad } from "../common/math";
 
 (function(d){
-    const mainCamera = new Camera(vec3.fromValues(0, 0, 30));
+    const mainCamera = new Camera();
 
     var renderer;
     var scene = new Scene();
@@ -29,7 +30,10 @@ import { Animations } from "../common/rendering/animation";
         MessageBus.post(MessageType.PLAYER_ADDED, {
             name: "SELF",
             ///gear: ['bare_head0', 'mail0_torso', 'leather0_legs', 'bare_arm']
-            gear: [null, 'mail0_torso', 'leather0_legs', null]
+            gear: [null, 'mail0_torso', 'leather0_legs', null],
+            head: 'head0',
+            skin: 'human0',
+            pos: vec3.create()
         })
 
         window.requestAnimationFrame(mainLoop);
@@ -40,7 +44,9 @@ import { Animations } from "../common/rendering/animation";
         const dT = time - timePrev;
         timePrev = time;
 
+        scene.update(time, dT);
         renderer.render(scene, mainCamera, time, dT);
+
         window.requestAnimationFrame(mainLoop);
     }
 })(document)

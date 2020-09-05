@@ -23,8 +23,7 @@ export class WebGLResourceManager{
         
         this.shaders = [];
         this.meshes = {};
-
-        this.materials = new Map();
+        this.materials = {};
 
         this.armatures = {};
 
@@ -60,8 +59,31 @@ export class WebGLResourceManager{
             case 'MATERIAL':
                 await this.parseMaterials(asset);
                 break;
+            case 'MESH':
+            case 'SUBMESH':
+                this.parseMeshes(asset);
+                break;
             default:
                 break;
+        }
+    }
+
+    async parseMeshes(...meshes){
+        let i = meshes.length;
+        while(i--){
+            const mesh = meshes[i];
+
+            const submeshes = mesh.submeshes || [mesh];
+
+            const hasUVs = !!submeshes.find(s => !!s.uvs && !!s.uvs.length);
+            const hasWeights = !!submeshes.find(s => !!s.weights && !!s.weights.length);
+
+            let meshResult = {};
+            if(hasUVs && hasWeights){
+                meshResult = parseActorMeshes(this.actorsVBuffer, this.actorsIBuffer, mesh);
+            }
+
+            this.meshes = {...this.meshes, ...meshResult};
         }
     }
 
@@ -76,20 +98,10 @@ export class WebGLResourceManager{
             const mat = await RestClient.getJSON(def.mat);
 
             await this.parseMaterials(mat);
-
-            if(!this.meshes[mesh.name]){
-                let meshResult;
-                switch(def.category){
-                    case 'PLAYER':
-                        meshResult = parseActorMeshes(this.actorsVBuffer, this.actorsIBuffer, mesh);
-                        break;
-                }
-
-                this.meshes = {...this.meshes, ...meshResult};
-            }
+            await this.parseMeshes(mesh);
 
             this.assets[def.name] = {
-                mat: this.materials.get(mat.name),
+                mat: this.materials[mat.name],
                 mesh: this.meshes[mesh.name]
             };
         }
@@ -115,7 +127,7 @@ export class WebGLResourceManager{
                 texPtrs[k] = await Textures.load(this.gl, asset.textures[k].src, 
                     !!asset.textures[k].bilinear, !!asset.textures[k].genmips, !!asset.textures[k].yflip);
             }
-            this.materials.set(asset.name, texPtrs);
+            this.materials[asset.name] = texPtrs;
         }
     }
 
