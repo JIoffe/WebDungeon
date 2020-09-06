@@ -241,9 +241,9 @@ class ExportJSON(Operator, ExportHelper):
                 bm.verts.layers.deform.verify()
                 deform = bm.verts.layers.deform.active
             
-            if not deform:
-                self.report({'WARNING'}, '{} has armature modifier but no vertex weights'.format(obj.name))
-                hasDeforms = False
+                if not deform:
+                    self.report({'WARNING'}, '{} has armature modifier but no vertex weights'.format(obj.name))
+                    hasDeforms = False
 
             # Go every face in the now-triangulated mesh and gather properties per vertex
             for face in bm.faces:

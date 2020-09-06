@@ -1,0 +1,1 @@
+{"name": "test_level", "type": "MATERIAL", "textures": { "diffuse": {"src": "/assets/img/test_level.png", "bilinear": true, "genmips": true, "yflip":true}}}

@@ -31,6 +31,10 @@ class InputSingleton{
                 this.axisH = -1;
             else if(action === MRIGHT)
                 this.axisH = 1;
+            else if(action === MUP)
+                this.axisV = 1;
+            else if(action === MDOWN)
+                this.axisV = -1;
         });
 
         document.addEventListener('keyup', ev => {
@@ -42,6 +46,8 @@ class InputSingleton{
 
             if(action === MLEFT || action === MRIGHT)
                 this.axisH = 0;
+            else if(action === MUP || action === MDOWN)
+                this.axisV = 0;
         });
     }
 

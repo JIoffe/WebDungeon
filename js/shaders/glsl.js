@@ -15,14 +15,24 @@ export const VertexShaders = {
         //texCoords = ${Attributes.Tex};
     }
     `,
-    postransformtex:
+
+    staticlevel:
     `#version 300 es
     
     in vec4 ${Attributes.Pos};
+    in vec2 ${Attributes.Tex};
+
+    uniform vec2 ${Uniforms.offset};
     uniform mat4 ${Uniforms.matMVP};
+
+    out vec2 vTexCoords;
     
     void main(){
-        gl_Position = ${Uniforms.matMVP} * ${Attributes.Pos};
+
+        gl_Position = ${Uniforms.matMVP} * (${Attributes.Pos} + vec4(${Uniforms.offset}.x, 0, ${Uniforms.offset}.y, 0));
+
+        //pass through tex coords
+        vTexCoords = ${Attributes.Tex};
     }
     `,
 

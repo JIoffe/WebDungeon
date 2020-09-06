@@ -1,14 +1,12 @@
 import { ShaderProgram } from "../../shaders/shader-program";
 import { VertexShaders, FragmentShaders } from "../../shaders/glsl";
-import { mat4 } from "gl-matrix";
 import { Textures } from "../io/textures";
 import { RestClient } from "../http/rest-client";
-import { BufferWrapper } from "../util/array-buffer-wrapper";
 import { PooledBuffer } from "./pooled-buffer";
 import { MessageBus } from "../messaging/message-bus";
 import { MessageType } from "../messaging/message-type";
 import { KeyedMutex } from "../util/concurrency";
-import { parseActorMeshes } from "./mesh/mesh-parsing";
+import { parseActorMeshes, parseStaticMeshes } from "./mesh/mesh-parsing";
 
 const assetMutex = new KeyedMutex
 
@@ -16,8 +14,13 @@ export class WebGLResourceManager{
     constructor(gl){
         this.gl = gl;
 
+        //For things that move around
         this.actorsVBuffer = new PooledBuffer(gl, gl.ARRAY_BUFFER);
         this.actorsIBuffer = new PooledBuffer(gl, gl.ELEMENT_ARRAY_BUFFER)
+
+        //For statics like level geometry and decorations
+        this.staticVBuffer = gl.createBuffer();
+        this.staticIBuffer = gl.createBuffer();
 
         this.assets = {};
         
@@ -36,6 +39,9 @@ export class WebGLResourceManager{
         const gl = this.gl;
         //SKINNED CHARACTERS - like player characters, enemies
         this.shaders.push(new ShaderProgram(gl, VertexShaders.skinnedmesh, FragmentShaders.textured_lit));
+
+        //Static level tileset geometry
+        this.shaders.push(new ShaderProgram(gl, VertexShaders.staticlevel, FragmentShaders.textured_lit));
     }
 
     onPlayerAdded(data){
@@ -76,11 +82,13 @@ export class WebGLResourceManager{
             const submeshes = mesh.submeshes || [mesh];
 
             const hasUVs = !!submeshes.find(s => !!s.uvs && !!s.uvs.length);
-            const hasWeights = !!submeshes.find(s => !!s.weights && !!s.weights.length);
+            const hasWeights = !!submeshes.find(s => !!s.weights && !!s.weights.length && !!s.weights.find(w => !!w && !!w.length));
 
             let meshResult = {};
             if(hasUVs && hasWeights){
                 meshResult = parseActorMeshes(this.actorsVBuffer, this.actorsIBuffer, mesh);
+            }else{
+                meshResult = parseStaticMeshes(this.gl, this.staticVBuffer, this.staticIBuffer, mesh);
             }
 
             this.meshes = {...this.meshes, ...meshResult};

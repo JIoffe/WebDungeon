@@ -31,6 +31,9 @@ export const Uniforms = {
     time: 'uTime',
     color: 'uColor',
 
+    //For simple offsets
+    offset: 'vOffset',
+
     //For animation
     keyframes: 'uKeyframes',
 
