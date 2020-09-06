@@ -44,9 +44,13 @@ class InputSingleton{
             const action = this.keyMap.get(ev.keyCode);
             this.state[action] = false;
 
-            if(action === MLEFT || action === MRIGHT)
+            if(action === MLEFT && this.axisH === -1)
                 this.axisH = 0;
-            else if(action === MUP || action === MDOWN)
+            else if(action === MRIGHT && this.axisH === 1)
+                this.axisH = 0;
+            else if(action === MUP && this.axisV === 1)
+                this.axisV = 0;
+            else if(action === MDOWN && this.axisV === -1)
                 this.axisV = 0;
         });
     }

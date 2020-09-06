@@ -13,6 +13,11 @@ import { DegToRad } from "../common/math";
     var scene = new Scene();
     var timePrev = 0;
 
+    //Some debug methods
+    window.whereAmI = () => {
+        console.log(scene.localPlayer.pos, scene.localPlayer.rot);
+    }
+
     d.addEventListener('DOMContentLoaded', async () => {
         renderer = new Renderer(d.getElementById('main-viewport'));
         renderer.init();
@@ -33,7 +38,7 @@ import { DegToRad } from "../common/math";
             state: 0,
             prevState: 0,
             skin: 'human0',
-            pos: vec3.fromValues(100,0,100),
+            pos: vec3.fromValues(180,0,60),
             rot: quat.create(),
             rRot: quat.create() //RENDER ROTATION
         })

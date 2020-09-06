@@ -25,7 +25,7 @@ class AnimationController{
         this.frame = (this.frame + delta) % this.anim.maxFrame;
         for(let i = this.anim.keyframes.length - 2; i >= 0; --i){
             const k0 = this.anim.keyframes[i];
-            if(k0 < this.frame){
+            if(k0 <= this.frame){
                 const k1 = this.anim.keyframes[i + 1];
                 this.tween[0] = i + this.anim.rowOffset;
                 this.tween[1] = this.tween[0] + 1;
