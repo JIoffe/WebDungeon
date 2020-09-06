@@ -2,7 +2,7 @@ import { vec3, quat, mat4 } from "gl-matrix";
 import { DegToRad, VEC3_UP } from "./math";
 
 const NEAR_CLIP = 0.1;
-const FAR_CLIP = 100;
+const FAR_CLIP = 1000;
 const FOV = 60;
 
 export class Camera{

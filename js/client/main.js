@@ -33,7 +33,7 @@ import { DegToRad } from "../common/math";
             state: 0,
             prevState: 0,
             skin: 'human0',
-            pos: vec3.create(),
+            pos: vec3.fromValues(100,0,100),
             rot: quat.create(),
             rRot: quat.create() //RENDER ROTATION
         })
