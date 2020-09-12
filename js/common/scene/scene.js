@@ -71,6 +71,8 @@ export class Scene{
                 this.localPlayer.prevState = this.localPlayer.state;
             }
 
+            this.localPlayer.anim.loop(dT * 0.02);
+
             //Update camera
             vec3.add(this.mainCamera.pos, this.localPlayer.pos, cameraOffset);
             vec3.copy(this.mainCamera.lookat, this.localPlayer.pos);

@@ -42,6 +42,9 @@ export class WebGLResourceManager{
 
         //Static level tileset geometry
         this.shaders.push(new ShaderProgram(gl, VertexShaders.staticlevel, FragmentShaders.textured_lit));
+
+        //Shadows - skinned
+        this.shaders.push(new ShaderProgram(gl, VertexShaders.skinnedmesh_shadow, FragmentShaders.white));
     }
 
     onPlayerAdded(data){

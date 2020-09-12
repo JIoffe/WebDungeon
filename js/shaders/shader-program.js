@@ -18,9 +18,12 @@ export const Uniforms = {
     matInvViewProj: 'uInvViewProj',
     matWorld: 'uWorld',
     matNormal: 'uNormalMatrix',
+
+    matLight: 'uMatLight',
     
     diffuse: 'uDiffuse',
-    boneTex: 'uBoneTex',  //Holdes bone transform information as a texture
+    boneTex: 'uBoneTex',  //Holds bone transform information as a texture
+    shadowTex: 'uShadowTex', //Holds direct shadowmap
     depth: 'uDepth',
     ramp: 'uRamp',
     normalMap: 'uNormalMap',

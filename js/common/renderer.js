@@ -1,6 +1,7 @@
 import {mat4, vec3, quat, mat3} from 'gl-matrix'
 import { WebGLResourceManager } from './rendering/resource-management';
 import { VERTEX_STRIDE_ACTORS, VERTEX_STRIDE_STATIC } from './rendering/mesh/mesh-constants';
+import { Textures } from './io/textures';
 
 const NEAR_CLIP = 0.1;
 const FAR_CLIP = 100;
@@ -10,9 +11,14 @@ var gl = null;
 //Buffered references for transforms
 var matMVP = mat4.create();
 var matVP = mat4.create();
+var matV = mat4.create();
+
+var matLight = mat4.create();
 
 const MAX_TO_RENDER = 512;
 var pvs = new Array(MAX_TO_RENDER);
+
+const SHADOWMAP_SIZE = 512;
 
 //Variables we will use
 let i = 0;
@@ -39,6 +45,9 @@ export class Renderer{
         gl.enable(gl.DEPTH_TEST);
         gl.enable(gl.CULL_FACE);
         gl.cullFace(gl.FRONT);
+
+        //Create shadow framebuffer
+        this.shadowFBO = this.createDepthFBO(SHADOWMAP_SIZE);
     }
 
     render(scene, camera, time, dT){
@@ -49,6 +58,10 @@ export class Renderer{
               w    = rect.right - rect.left,
               h    = rect.bottom - rect.top;
 
+        const shaders = this.resources.shaders;
+        let shader;
+        let arm;
+
         this.canvas.setAttribute('width', '' + w);
         this.canvas.setAttribute('height', '' + h);
 
@@ -57,9 +70,71 @@ export class Renderer{
             gl = canvas.getContext("webgl2");
         }
 
-        //Forward pass - cover it all
-        const shaders = this.resources.shaders;
+        ////////////////////////////////////////////////////////////
+        // SHADOW PASS
+        ////////////////////////////////////////////////////////////
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFBO[0]);
+        gl.viewport(0, 0, SHADOWMAP_SIZE, SHADOWMAP_SIZE);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        shader = shaders[2];
+        gl.useProgram(shader.program);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.resources.actorsVBuffer.buffer);
+        gl.enableVertexAttribArray(1);
+        gl.enableVertexAttribArray(2);
+        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, VERTEX_STRIDE_ACTORS, 0); //POS
+        gl.vertexAttribPointer(1, 4, gl.UNSIGNED_BYTE, false, VERTEX_STRIDE_ACTORS, 12); // VERTEX GROUPS (BONES)
+        gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, VERTEX_STRIDE_ACTORS, 16); // WEIGHTS
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.actorsIBuffer.buffer);
+
+        //Render player shadows
+        arm = this.resources.armatures.ARM_PLAYER;
+        if(!!arm){
+            gl.activeTexture(gl.TEXTURE2);
+            gl.bindTexture(gl.TEXTURE_2D, arm);
+            gl.uniform1i(shader.uniformLocations.boneTex, 2);
+        }
+
+        const matLightProj = mat4.create();
+        const matLightView = mat4.create();
+        mat4.perspective(matLightProj, 1.5707963267948966, 1, 0.1, 500);
+        mat4.lookAt(matLightView, [180, 20, 90], [180, 0, 60], [0,1,0]);
+        mat4.mul(matLight, matLightProj, matLightView);
+
+        i = scene.players.length;
+        while(i--){
+            const p = scene.players[i];
+
+            //Update position in shader
+            mat4.fromRotationTranslation(matMVP, p.rRot, p.pos);
+            mat4.multiply(matMVP, matLight, matMVP);
+            gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matMVP);
+            gl.uniform3fv(shader.uniformLocations.keyframes, p.anim.tween);
+
+            this.drawMesh(this.resources.meshes[p.head]);
+            this.drawMesh(this.resources.meshes[p.body]);
+
+            let j = p.gear.length;
+            while(j--){
+                if(!p.gear[j])
+                    continue;
+
+                const a = this.resources.assets[p.gear[j]];
+
+                if(!a)
+                    continue;
+
+                this.drawMesh(a.mesh);
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////
+        // FORWARD PASS
+        ///////////////////////////////////////////////////////////////
         gl.viewport(0, 0, w, h);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         gl.clearColor(0.3, 0.3, 1.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -68,17 +143,16 @@ export class Renderer{
         const viewMatrix = camera.viewMatrix;
         mat4.mul(matVP, projMatrix, viewMatrix);
 
-        let shader = shaders[0];
-
         /////////////////////////////////////////////////////////////
         // SKINNED ACTORS - Players, monsters, etc.
         /////////////////////////////////////////////////////////////
         //Bind common state for all skinned characters
+        shader = shaders[0];
         gl.useProgram(shader.program);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.resources.actorsVBuffer.buffer);
-        gl.enableVertexAttribArray(1);
-        gl.enableVertexAttribArray(2);
+        //gl.enableVertexAttribArray(1); - Previously enabled
+        //gl.enableVertexAttribArray(2);
         gl.enableVertexAttribArray(3);
         gl.vertexAttribPointer(0, 3, gl.FLOAT, false, VERTEX_STRIDE_ACTORS, 0); //POS
         gl.vertexAttribPointer(1, 4, gl.UNSIGNED_BYTE, false, VERTEX_STRIDE_ACTORS, 12); // VERTEX GROUPS (BONES)
@@ -87,8 +161,14 @@ export class Renderer{
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.actorsIBuffer.buffer);
 
+        //Bind shadowmap
+        gl.activeTexture(gl.TEXTURE3);
+        gl.uniform1i(shader.uniformLocations.shadowTex, 3);
+        gl.bindTexture(gl.TEXTURE_2D, this.shadowFBO[1])
+        gl.uniformMatrix4fv(shader.uniformLocations.matLight, false, matLight);
+
         //RENDER ALL PLAYERS - assume players are always visible
-        let arm = this.resources.armatures.ARM_PLAYER;
+        arm = this.resources.armatures.ARM_PLAYER;
         if(!!arm){
             gl.activeTexture(gl.TEXTURE2);
             gl.bindTexture(gl.TEXTURE_2D, arm);
@@ -97,6 +177,7 @@ export class Renderer{
 
         gl.activeTexture(gl.TEXTURE0);
         gl.uniform1i(shader.uniformLocations.diffuse, 0);
+        gl.uniformMatrix4fv(shader.uniformLocations.matViewProj, false, matVP);
 
         i = scene.players.length;
         while(i--){
@@ -104,11 +185,9 @@ export class Renderer{
 
             //Update position in shader
             mat4.fromRotationTranslation(matMVP, p.rRot, p.pos);
-            mat4.multiply(matMVP, matVP, matMVP)
-            gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matMVP);
+            gl.uniformMatrix4fv(shader.uniformLocations.matWorld, false, matMVP);
 
-            const kf = p.anim.loop(dT * 0.02);
-            gl.uniform3fv(shader.uniformLocations.keyframes, kf);
+            gl.uniform3fv(shader.uniformLocations.keyframes, p.anim.tween);
 
             //Base skin for face/arms/etc.
             let mat = this.resources.materials[p.skin]
@@ -137,7 +216,7 @@ export class Renderer{
         /////////////////////////////////////////////////////////////
         // STATIC GEOMETRY
         /////////////////////////////////////////////////////////////
-        shader = this.resources.shaders[1];
+        shader = shaders[1];
         gl.useProgram(shader.program);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.resources.staticVBuffer);
@@ -149,8 +228,14 @@ export class Renderer{
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.staticIBuffer);
 
+        //Bind shadowmap
+        gl.activeTexture(gl.TEXTURE3);
+        gl.uniform1i(shader.uniformLocations.shadowTex, 3);
+        gl.bindTexture(gl.TEXTURE_2D, this.shadowFBO[1])
+        
         //Draw all level tiles
         gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matVP);
+        gl.uniformMatrix4fv(shader.uniformLocations.matLight, false, matLight);
     
         if(!!scene.level){
             //Set static geometry texture (atlas)
@@ -182,5 +267,24 @@ export class Renderer{
         if(!m) return;
         let s = m.length; //s for submesh
         while(s--) gl.drawElements(gl.TRIANGLES, m[s][0], gl.UNSIGNED_SHORT, m[s][1]);
+    }
+
+    createDepthFBO(texSize){
+        const tex = gl.createTexture();
+
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT32F, texSize, texSize, 0, gl.DEPTH_COMPONENT, gl.FLOAT, null);
+
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+         
+        const fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, tex, 0);
+
+        return [fbo, tex]
     }
 }
