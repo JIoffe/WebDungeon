@@ -8,6 +8,9 @@ const FAR_CLIP = 100;
 const FOV = 60;
 
 var gl = null;
+var frameWidth = -1;
+var frameHeight = -1;
+
 //Buffered references for transforms
 var matMVP = mat4.create();
 var matVP = mat4.create();
@@ -62,9 +65,13 @@ export class Renderer{
         let shader;
         let arm;
 
-        this.canvas.setAttribute('width', '' + w);
-        this.canvas.setAttribute('height', '' + h);
-
+        if(w !== frameWidth || h !== frameHeight){
+            //this will resize the main frame buffer
+            this.canvas.setAttribute('width', '' + w);
+            this.canvas.setAttribute('height', '' + h);
+            frameWidth = w;
+            frameHeight = h;
+        }
         //Recover if context is lost
         if(!gl){
             gl = canvas.getContext("webgl2");
@@ -99,8 +106,8 @@ export class Renderer{
 
         const matLightProj = mat4.create();
         const matLightView = mat4.create();
-        mat4.perspective(matLightProj, 1.5707963267948966, 1, 0.1, 500);
-        mat4.lookAt(matLightView, [180, 20, 90], [180, 0, 60], [0,1,0]);
+        mat4.perspective(matLightProj, 140 * Math.PI / 180, 1, 0.1, 500);
+        mat4.lookAt(matLightView, [180, 20, 90], [180, 0, 90], [0,0,1]);
         mat4.mul(matLight, matLightProj, matLightView);
 
         i = scene.players.length;

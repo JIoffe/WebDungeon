@@ -200,8 +200,12 @@ export const FragmentShaders = {
     const vec3 vLightPos = vec3(180, 20, 90);
     
     void main() {
-        float lighting = 1. - clamp(distance(vPosWorld, vLightPos) / 80., 0., 1.);
+        vec3 vLD = vLightPos - vPosWorld;
+        float sd = dot(vLD, vLD);
+        float lighting = 1. - sd / 3600.;
+        //float lighting = 1. - clamp(distance(vPosWorld, vLightPos) / 80., 0., 1.);
         color = texture(${Uniforms.diffuse}, vTexCoords);
+
         vec4 posInLight = ${Uniforms.matLight} * vec4(vPosWorld, 1.);
         vec3 projectedCoords = (posInLight.xyz / posInLight.w * 0.5) + vec3(.5,.5,.5);
 
@@ -213,8 +217,6 @@ export const FragmentShaders = {
             }
         }
 
-        color.rgb *= lighting;
-
         // float shadowDepth = texture(${Uniforms.shadowTex}, shadowLookup).r;
         // float sampledDepth = posInLight.z / posInLight.w;
 
@@ -222,8 +224,7 @@ export const FragmentShaders = {
         // color.g = 0.;
         // color.b = 0.;
 
-        // if(posInLight.z < 0.0)
-        //     color.rgb *= 0.;
+        color.rgb *= lighting;
     }
     `,
 
