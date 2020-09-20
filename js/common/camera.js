@@ -9,7 +9,7 @@ export class Camera{
     constructor(){
         this.pos = vec3.create();
         this.pos[2] = 60;
-        this.pos[1] = 40;
+        this.pos[1] = 50;
 
         this.lookat = vec3.create();
 

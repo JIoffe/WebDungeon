@@ -86,6 +86,13 @@ export function parseActorMeshes(vertexPool, indexPool, ...meshes){
                     vertexBuffer.addUint16(0,0);
                 }
                 
+                //Vertex Normals
+                if(!!submesh.norms && !!submesh.norms.length){
+                    vertexBuffer.addFloatAsInt8(submesh.norms[k * 3], submesh.norms[k * 3 + 1], submesh.norms[k * 3 + 2], 0);
+                }else{
+                    //Pad with zeroes
+                    vertexBuffer.addInt8(0,0,0,0);
+                }
             }
             //END PER VERTEX DATA
 
@@ -172,6 +179,13 @@ export function parseStaticMeshes(gl, vertexBufferObject, indexBufferObject, ...
                     vertexBuffer.addUint16(0,0);
                 }
                 
+                //Vertex Normals
+                if(!!submesh.norms && !!submesh.norms.length){
+                    vertexBuffer.addFloatAsInt8(submesh.norms[k * 3], submesh.norms[k * 3 + 1], submesh.norms[k * 3 + 2], 0);
+                }else{
+                    //Pad with zeroes
+                    vertexBuffer.addInt8(0,0,0,0);
+                }
             }
             //END PER VERTEX DATA
 

@@ -21,7 +21,7 @@ var matLight = mat4.create();
 const MAX_TO_RENDER = 512;
 var pvs = new Array(MAX_TO_RENDER);
 
-const SHADOWMAP_SIZE = 512;
+const SHADOWMAP_SIZE = 256;
 
 //Variables we will use
 let i = 0;
@@ -90,6 +90,7 @@ export class Renderer{
         gl.bindBuffer(gl.ARRAY_BUFFER, this.resources.actorsVBuffer.buffer);
         gl.enableVertexAttribArray(1);
         gl.enableVertexAttribArray(2);
+        gl.disableVertexAttribArray(3);
         gl.vertexAttribPointer(0, 3, gl.FLOAT, false, VERTEX_STRIDE_ACTORS, 0); //POS
         gl.vertexAttribPointer(1, 4, gl.UNSIGNED_BYTE, false, VERTEX_STRIDE_ACTORS, 12); // VERTEX GROUPS (BONES)
         gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, VERTEX_STRIDE_ACTORS, 16); // WEIGHTS
@@ -143,7 +144,7 @@ export class Renderer{
         gl.viewport(0, 0, w, h);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        gl.clearColor(0.3, 0.3, 1.0, 1.0);
+        gl.clearColor(0,0,0,1);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         const projMatrix = camera.projectToView(w, h);
@@ -161,10 +162,12 @@ export class Renderer{
         //gl.enableVertexAttribArray(1); - Previously enabled
         //gl.enableVertexAttribArray(2);
         gl.enableVertexAttribArray(3);
+        gl.enableVertexAttribArray(4);
         gl.vertexAttribPointer(0, 3, gl.FLOAT, false, VERTEX_STRIDE_ACTORS, 0); //POS
         gl.vertexAttribPointer(1, 4, gl.UNSIGNED_BYTE, false, VERTEX_STRIDE_ACTORS, 12); // VERTEX GROUPS (BONES)
         gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, VERTEX_STRIDE_ACTORS, 16); // WEIGHTS
         gl.vertexAttribPointer(3, 2, gl.UNSIGNED_SHORT, true, VERTEX_STRIDE_ACTORS, 20); // UVs
+        gl.vertexAttribPointer(4, 3, gl.BYTE, true, VERTEX_STRIDE_ACTORS, 24); // NORMALS
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.actorsIBuffer.buffer);
 
@@ -227,11 +230,12 @@ export class Renderer{
         gl.useProgram(shader.program);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.resources.staticVBuffer);
-        gl.disableVertexAttribArray(2);
         gl.disableVertexAttribArray(3);
+        gl.disableVertexAttribArray(4);
 
         gl.vertexAttribPointer(0, 3, gl.FLOAT, false, VERTEX_STRIDE_STATIC, 0); //POS
         gl.vertexAttribPointer(1, 2, gl.UNSIGNED_SHORT, true, VERTEX_STRIDE_STATIC, 12); // UVs
+        gl.vertexAttribPointer(2, 3, gl.BYTE, true, VERTEX_STRIDE_STATIC, 16); // NORMALS
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.staticIBuffer);
 
@@ -246,14 +250,14 @@ export class Renderer{
     
         if(!!scene.level){
             //Set static geometry texture (atlas)
-            const mat = this.resources.materials['test_level'];
+            const mat = this.resources.materials['dungeon1'];
 
             gl.activeTexture(gl.TEXTURE0);
             gl.uniform1i(shader.uniformLocations.diffuse, 0);
             gl.bindTexture(gl.TEXTURE_2D, mat.diffuse);
             
             if(!!scene.level.tiles){
-                const m = this.resources.meshes['test_level'];
+                const m = this.resources.meshes['dungeon1'];
 
                 let x = scene.level.w;
                 while(x--){
@@ -261,8 +265,10 @@ export class Renderer{
                     while(y--){
                         let i = x + y * scene.level.w;
                         const t = scene.level.tiles[i];
+                        if(t < 0)
+                            continue;
 
-                        gl.uniform2f(shader.uniformLocations.offset, x * scene.level.spacing, y * scene.level.spacing);
+                        gl.uniform2f(shader.uniformLocations.offset, x << scene.level.spacing, y << scene.level.spacing);
                         gl.drawElements(gl.TRIANGLES, m[t][0], gl.UNSIGNED_SHORT, m[t][1]);
                     }
                 }

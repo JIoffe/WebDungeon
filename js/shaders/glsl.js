@@ -6,12 +6,14 @@ export const VertexShaders = {
     
     in vec4 ${Attributes.Pos};
     in vec2 ${Attributes.Tex};
+    in vec3 ${Attributes.Norm};
 
     uniform vec2 ${Uniforms.offset};
     uniform mat4 ${Uniforms.matMVP};
 
     out vec3 vPosWorld;
     out vec2 vTexCoords;
+    out vec3 vNormal;
     
     void main(){
         vec4 pos = ${Attributes.Pos} + vec4(${Uniforms.offset}.x, 0, ${Uniforms.offset}.y, 0);
@@ -20,6 +22,7 @@ export const VertexShaders = {
         //pass through tex coords
         vTexCoords = ${Attributes.Tex};
         vPosWorld = pos.xyz;
+        vNormal = normalize(${Attributes.Norm});
     }
     `,
 
@@ -30,6 +33,7 @@ export const VertexShaders = {
     in vec4 ${Attributes.Groups};
     in vec4 ${Attributes.Weights};
     in vec2 ${Attributes.Tex};
+    in vec3 ${Attributes.Norm};
 
     uniform mat4 ${Uniforms.matViewProj};
     uniform mat4 ${Uniforms.matWorld};
@@ -38,6 +42,7 @@ export const VertexShaders = {
 
     out vec2 vTexCoords;
     out vec3 vPosWorld;
+    out vec3 vNormal;
 
     //Texture arrangement:
     //ROW = FRAME, ie. there are as many rows as there are frames of animation
@@ -86,6 +91,7 @@ export const VertexShaders = {
         //pass through tex coords
         vTexCoords = ${Attributes.Tex};
         vPosWorld = pos.xyz / pos.w;
+        vNormal = normalize(mat3(${Uniforms.matWorld}) * ${Attributes.Norm});
     }
     `,
 
@@ -194,28 +200,30 @@ export const FragmentShaders = {
 
     in vec2 vTexCoords;
     in vec3 vPosWorld;
+    in vec3 vNormal;
 
     out vec4 color;
 
     const vec3 vLightPos = vec3(180, 20, 90);
+    const float bias = 0.0003;
     
     void main() {
-        vec3 vLD = vLightPos - vPosWorld;
-        float sd = dot(vLD, vLD);
-        float lighting = 1. - sd / 3600.;
+        // vec3 vLD = vLightPos - vPosWorld;
+        // float sd = dot(vLD, vLD);
+        // float lighting = dot(normalize(vNormal), -normalize(vLD)) * (1. - sd / 3600.);
         //float lighting = 1. - clamp(distance(vPosWorld, vLightPos) / 80., 0., 1.);
         color = texture(${Uniforms.diffuse}, vTexCoords);
 
-        vec4 posInLight = ${Uniforms.matLight} * vec4(vPosWorld, 1.);
-        vec3 projectedCoords = (posInLight.xyz / posInLight.w * 0.5) + vec3(.5,.5,.5);
+        // vec4 posInLight = ${Uniforms.matLight} * vec4(vPosWorld, 1.);
+        // vec3 projectedCoords = (posInLight.xyz / posInLight.w * 0.5) + vec3(.5,.5,.5);
 
-        if(projectedCoords.x >= 0. && projectedCoords.y >= 0. && projectedCoords.x <= 1.0 && projectedCoords.y <= 1.0){
-            float shadowDepth = texture(${Uniforms.shadowTex}, projectedCoords.xy).r;
+        // if(projectedCoords.x >= 0. && projectedCoords.y >= 0. && projectedCoords.x <= 1.0 && projectedCoords.y <= 1.0){
+        //     float shadowDepth = texture(${Uniforms.shadowTex}, projectedCoords.xy).r;
 
-            if(shadowDepth < (projectedCoords.z - 0.00008)){
-                lighting = 0.;
-            }
-        }
+        //     if(shadowDepth < (projectedCoords.z - bias)){
+        //        lighting = 0.;
+        //     }
+        // }
 
         // float shadowDepth = texture(${Uniforms.shadowTex}, shadowLookup).r;
         // float sampledDepth = posInLight.z / posInLight.w;
@@ -224,7 +232,7 @@ export const FragmentShaders = {
         // color.g = 0.;
         // color.b = 0.;
 
-        color.rgb *= lighting;
+        //color.rgb *= lighting;
     }
     `,
 

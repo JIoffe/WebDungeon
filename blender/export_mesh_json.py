@@ -3,6 +3,7 @@ import bmesh
 import struct
 import json
 import os
+import math
 
 # ExportHelper is a helper class, defines filename and
 # invoke() function which calls the file selector.
@@ -57,12 +58,18 @@ class SubmeshExport:
         # but UVs are different
         for i, (v0,uv0,norm0) in enumerate(zip(self.verts, self.uvs, self.norms)):
             v_match = abs(v0.x - v1.x) <= 1e-09 and abs(v0.y - v1.y) <= 1e-09 and abs(v0.z - v1.z) <= 1e-09
+            
             if not uv1:
                 uv_match = True
             else:
                 uv_match = abs(uv0.x - uv1.x) <= 1e-09 and abs(uv0.y - uv1.y) <= 1e-09
                 
-            if v_match and uv_match:
+            if not norm1:
+                norm_match = True
+            else:
+                norm_match = abs(norm0.x - norm1.x) <= 1e-09 and abs(norm0.y - norm1.y) <= 1e-09 and abs(norm0.z - norm1.z) <= 1e-09
+                
+            if v_match and uv_match and norm_match:
                 index = i
                 break    
         
@@ -103,6 +110,7 @@ class SubmeshExport:
         if any(self.uvs):
             for uv in self.uvs:
                 if not uv:
+                    print('NO UV')
                     uv = Vector([0,0])
                     
                 #Round to 3 decimal places
@@ -264,11 +272,16 @@ class ExportJSON(Operator, ExportHelper):
                     # UV is attached to the loop
                     if uv:
                         uv_coord = loop[uv].uv
+                        if math.isnan(uv_coord.x) or math.isnan(uv_coord.y):
+                            # assume this is a bad vertex and don't even output it
+                            continue
                     else:
                         uv_coord = None
                         
-                                    
-                    submeshExport.append(vert_pos, uv1=uv_coord, weight1=weight)
+                    # Normals have to be computed at each point
+                    normal = loop.calc_normal()
+
+                    submeshExport.append(vert_pos, uv1=uv_coord, weight1=weight, norm1=normal)
             
             # release extra mesh data from memory
             bm.free()

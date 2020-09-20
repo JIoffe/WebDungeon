@@ -8,7 +8,7 @@ import { VEC3_TEMP, RadToDeg, VEC3_UP, DegToRad } from "../math";
 import { PlayerState } from "./player-state";
 
 const PLAYER_SPEED = 0.04;
-const PLAYER_SLERP_SPEED = 0.2;
+const PLAYER_SLERP_SPEED = 0.3;
 
 const cameraOffset = vec3.fromValues(0, 40, 60);
 
@@ -77,5 +77,9 @@ export class Scene{
             vec3.add(this.mainCamera.pos, this.localPlayer.pos, cameraOffset);
             vec3.copy(this.mainCamera.lookat, this.localPlayer.pos);
         }
+    }
+
+    validatePosition(pos, delta){
+        
     }
 }
