@@ -6,6 +6,8 @@ import { Textures } from './io/textures';
 const NEAR_CLIP = 0.1;
 const FAR_CLIP = 100;
 const FOV = 60;
+const MAX_VIS_LIGHTS = 16;
+const MAX_SHADOW_LIGHTS = 4;
 
 var gl = null;
 var frameWidth = -1;
@@ -17,6 +19,10 @@ var matVP = mat4.create();
 var matV = mat4.create();
 
 var matLight = mat4.create();
+var matLightInfo = mat4.create();
+
+var visLights = new Array(MAX_VIS_LIGHTS);
+var nVisLights = 0;
 
 const MAX_TO_RENDER = 512;
 var pvs = new Array(MAX_TO_RENDER);
@@ -76,6 +82,12 @@ export class Renderer{
         if(!gl){
             gl = canvas.getContext("webgl2");
         }
+
+        ////////////////////////////////////////////////////////////
+        //Determine visible lights and if shadows exist
+        ////////////////////////////////////////////////////////////
+        visLights[0] = scene.level.fixedLights[0];
+        nVisLights = 1;
 
         ////////////////////////////////////////////////////////////
         // SHADOW PASS
@@ -171,7 +183,8 @@ export class Renderer{
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.actorsIBuffer.buffer);
 
-        //Bind shadowmap
+        //Bind lights and shadowmap
+        this.updateShaderLights(shader);
         gl.activeTexture(gl.TEXTURE3);
         gl.uniform1i(shader.uniformLocations.shadowTex, 3);
         gl.bindTexture(gl.TEXTURE_2D, this.shadowFBO[1])
@@ -239,11 +252,15 @@ export class Renderer{
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.staticIBuffer);
 
-        //Bind shadowmap
+        //Bind lights and shadowmap
+        this.updateShaderLights(shader);
         gl.activeTexture(gl.TEXTURE3);
         gl.uniform1i(shader.uniformLocations.shadowTex, 3);
         gl.bindTexture(gl.TEXTURE_2D, this.shadowFBO[1])
         
+        //INFO FOR NEAREST LIGHTS
+        gl.uniformMatrix4fv(shader.uniformLocations.matLightInfo, false, matLightInfo);
+
         //Draw all level tiles
         gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matVP);
         gl.uniformMatrix4fv(shader.uniformLocations.matLight, false, matLight);
@@ -299,5 +316,20 @@ export class Renderer{
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, tex, 0);
 
         return [fbo, tex]
+    }
+
+    updateShaderLights(shader){
+        //INFO FOR NEAREST LIGHTS
+        {
+            const l = visLights[0];
+            matLightInfo[0] = l.pos[0];
+            matLightInfo[1] = l.pos[1];
+            matLightInfo[2] = l.pos[2];
+            matLightInfo[3] = l.pow;
+            matLightInfo[4] = l.col[0];
+            matLightInfo[5] = l.col[1];
+            matLightInfo[6] = l.col[2];
+            gl.uniformMatrix4fv(shader.uniformLocations.matLightInfo, false, matLightInfo);
+        }
     }
 }

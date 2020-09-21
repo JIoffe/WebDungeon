@@ -20,6 +20,13 @@ export const Uniforms = {
     matNormal: 'uNormalMatrix',
 
     matLight: 'uMatLight',
+
+    //Holds information on where the two lights that can affect each draw call are
+    //Row1: light 0 position (xyz) and power (w)
+    //Row2: light 0 color
+    //Row3: light 1 position (xyz) and power (w)
+    //Row4: light 1 color
+    matLightInfo: 'uMatLightInfo',
     
     diffuse: 'uDiffuse',
     boneTex: 'uBoneTex',  //Holds bone transform information as a texture

@@ -198,22 +198,33 @@ export const FragmentShaders = {
     uniform sampler2D ${Uniforms.diffuse};
     uniform sampler2D ${Uniforms.shadowTex};
 
+    uniform mat4 ${Uniforms.matLightInfo};
+
     in vec2 vTexCoords;
     in vec3 vPosWorld;
     in vec3 vNormal;
 
     out vec4 color;
 
-    const vec3 vLightPos = vec3(180, 20, 90);
-    const float bias = 0.0003;
+    // const vec3 vLightPos = vec3(180, 20, 90);
+    // const float bias = 0.0003;
+    const vec3 ambience = vec3(0.3,0.3, 0.4);
     
     void main() {
+        vec4 diffuseColor = texture(${Uniforms.diffuse}, vTexCoords);
+
+        vec3 vLD = ${Uniforms.matLightInfo}[0].xyz - vPosWorld;
+        float sd = clamp(dot(vLD, vLD), 0., 3600.);
+        vec3 lighting = (dot(normalize(vNormal), -normalize(vLD)) * (1. - sd / 3600.) * ${Uniforms.matLightInfo}[1].xyz);
+        lighting += ambience;
+        color = texture(${Uniforms.diffuse}, vTexCoords);
+        color.rgb *= lighting;
         // vec3 vLD = vLightPos - vPosWorld;
         // float sd = dot(vLD, vLD);
         // float lighting = dot(normalize(vNormal), -normalize(vLD)) * (1. - sd / 3600.);
-        //float lighting = 1. - clamp(distance(vPosWorld, vLightPos) / 80., 0., 1.);
-        color = texture(${Uniforms.diffuse}, vTexCoords);
-
+        // //float lighting = 1. - clamp(distance(vPosWorld, vLightPos) / 80., 0., 1.);
+        // color = texture(${Uniforms.diffuse}, vTexCoords);
+        // color.rgb *= lighting + ambience;
         // vec4 posInLight = ${Uniforms.matLight} * vec4(vPosWorld, 1.);
         // vec3 projectedCoords = (posInLight.xyz / posInLight.w * 0.5) + vec3(.5,.5,.5);
 
@@ -231,8 +242,6 @@ export const FragmentShaders = {
         // color.r = mod(sampledDepth, 0.3) / 0.3;
         // color.g = 0.;
         // color.b = 0.;
-
-        //color.rgb *= lighting;
     }
     `,
 
