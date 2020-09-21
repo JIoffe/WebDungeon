@@ -213,9 +213,17 @@ export const FragmentShaders = {
     void main() {
         vec4 diffuseColor = texture(${Uniforms.diffuse}, vTexCoords);
 
+        //Light 1
         vec3 vLD = ${Uniforms.matLightInfo}[0].xyz - vPosWorld;
-        float sd = clamp(dot(vLD, vLD), 0., 3600.);
-        vec3 lighting = (dot(normalize(vNormal), -normalize(vLD)) * (1. - sd / 3600.) * ${Uniforms.matLightInfo}[1].xyz);
+        float sd = clamp(dot(vLD, vLD), 0., ${Uniforms.matLightInfo}[0].w);
+        vec3 lighting = (dot(normalize(vNormal), -normalize(vLD)) * (1. - sd / ${Uniforms.matLightInfo}[0].w) * ${Uniforms.matLightInfo}[1].xyz);
+
+        //Light 2
+        vLD = ${Uniforms.matLightInfo}[2].xyz - vPosWorld;
+        sd = clamp(dot(vLD, vLD), 0., ${Uniforms.matLightInfo}[2].w);
+        lighting += (dot(normalize(vNormal), -normalize(vLD)) * (1. - sd / ${Uniforms.matLightInfo}[2].w) * ${Uniforms.matLightInfo}[3].xyz);
+
+
         lighting += ambience;
         color = texture(${Uniforms.diffuse}, vTexCoords);
         color.rgb *= lighting;

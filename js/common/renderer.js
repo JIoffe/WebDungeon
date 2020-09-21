@@ -87,7 +87,8 @@ export class Renderer{
         //Determine visible lights and if shadows exist
         ////////////////////////////////////////////////////////////
         visLights[0] = scene.level.fixedLights[0];
-        nVisLights = 1;
+        visLights[1] = scene.level.fixedLights[1];
+        nVisLights = 2;
 
         ////////////////////////////////////////////////////////////
         // SHADOW PASS
@@ -318,10 +319,10 @@ export class Renderer{
         return [fbo, tex]
     }
 
-    updateShaderLights(shader){
+    updateShaderLights(shader, x, y){
         //INFO FOR NEAREST LIGHTS
         {
-            const l = visLights[0];
+            let l = visLights[0];
             matLightInfo[0] = l.pos[0];
             matLightInfo[1] = l.pos[1];
             matLightInfo[2] = l.pos[2];
@@ -329,6 +330,16 @@ export class Renderer{
             matLightInfo[4] = l.col[0];
             matLightInfo[5] = l.col[1];
             matLightInfo[6] = l.col[2];
+
+            l = visLights[1];
+            matLightInfo[8] = l.pos[0];
+            matLightInfo[9] = l.pos[1];
+            matLightInfo[10] = l.pos[2];
+            matLightInfo[11] = l.pow;
+            matLightInfo[12] = l.col[0];
+            matLightInfo[13] = l.col[1];
+            matLightInfo[14] = l.col[2];
+
             gl.uniformMatrix4fv(shader.uniformLocations.matLightInfo, false, matLightInfo);
         }
     }

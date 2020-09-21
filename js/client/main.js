@@ -7,6 +7,7 @@ import { MessageType } from "../common/messaging/message-type";
 import { RestClient } from "../common/http/rest-client";
 import { Animations } from "../common/rendering/animation";
 import { DegToRad } from "../common/math";
+import { COLOR_FLAME_TORCH } from "../common/constants/colors";
 
 (function(d){
     var renderer;
@@ -59,8 +60,13 @@ import { DegToRad } from "../common/math";
             fixedLights: [
                 {
                     pos: vec3.fromValues(180, 20, 90),
-                    col: vec3.fromValues(0.88, 0.71, 0.13),
-                    pow: 20
+                    col: COLOR_FLAME_TORCH,
+                    pow: 3600
+                },
+                {
+                    pos: vec3.fromValues(300, 20, 90),
+                    col: COLOR_FLAME_TORCH,
+                    pow: 3600
                 }
             ],
             tiles: [X,5,5,5,4,5,5,4,5,5,5,4,5,5,4,5,5,5,4,5,4,5,5,X,
