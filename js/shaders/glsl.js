@@ -198,7 +198,9 @@ export const FragmentShaders = {
     uniform sampler2D ${Uniforms.diffuse};
     uniform sampler2D ${Uniforms.shadowTex};
 
-    uniform mat4 ${Uniforms.matLightInfo};
+    //RGB and alpha channel is intensity
+    uniform vec4 ${Uniforms.lightColors}[2];
+    uniform vec3 ${Uniforms.lightPositions}[2];
 
     in vec2 vTexCoords;
     in vec3 vPosWorld;
@@ -212,17 +214,13 @@ export const FragmentShaders = {
     
     void main() {
         vec4 diffuseColor = texture(${Uniforms.diffuse}, vTexCoords);
+        vec3 lighting;
 
-        //Light 1
-        vec3 vLD = ${Uniforms.matLightInfo}[0].xyz - vPosWorld;
-        float sd = clamp(dot(vLD, vLD), 0., ${Uniforms.matLightInfo}[0].w);
-        vec3 lighting = (dot(normalize(vNormal), -normalize(vLD)) * (1. - sd / ${Uniforms.matLightInfo}[0].w) * ${Uniforms.matLightInfo}[1].xyz);
-
-        //Light 2
-        vLD = ${Uniforms.matLightInfo}[2].xyz - vPosWorld;
-        sd = clamp(dot(vLD, vLD), 0., ${Uniforms.matLightInfo}[2].w);
-        lighting += (dot(normalize(vNormal), -normalize(vLD)) * (1. - sd / ${Uniforms.matLightInfo}[2].w) * ${Uniforms.matLightInfo}[3].xyz);
-
+        for(int i = 0; i < 2; ++i){
+            vec3 vLD = ${Uniforms.lightPositions}[i] - vPosWorld;
+            float sd = clamp(dot(vLD, vLD), 0., ${Uniforms.lightColors}[i].w);
+            lighting += (dot(normalize(vNormal), -normalize(vLD)) * (1. - sd / ${Uniforms.lightColors}[i].w) * ${Uniforms.lightColors}[i].xyz);
+        }
 
         lighting += ambience;
         color = texture(${Uniforms.diffuse}, vTexCoords);

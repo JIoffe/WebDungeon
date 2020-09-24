@@ -18,6 +18,9 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
     window.whereAmI = () => {
         console.log(scene.localPlayer.pos, scene.localPlayer.rot);
     }
+    window.printLights = () => {
+
+    }
 
     d.addEventListener('DOMContentLoaded', async () => {
         renderer = new Renderer(d.getElementById('main-viewport'));
@@ -59,15 +62,13 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
             spacing: 5,
             fixedLights: [
                 {
-                    pos: vec3.fromValues(180, 20, 90),
-                    col: COLOR_FLAME_TORCH,
-                    pow: 3600
+                    pos: vec3.fromValues(5 * 32, 30, 36),
+                    col: COLOR_FLAME_TORCH
                 },
                 {
-                    pos: vec3.fromValues(300, 20, 90),
-                    col: COLOR_FLAME_TORCH,
-                    pow: 3600
-                }
+                    pos: vec3.fromValues(7 * 32, 30, 36),
+                    col: COLOR_FLAME_TORCH
+                },
             ],
             tiles: [X,5,5,5,4,5,5,4,5,5,5,4,5,5,4,5,5,5,4,5,4,5,5,X,
                     8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,

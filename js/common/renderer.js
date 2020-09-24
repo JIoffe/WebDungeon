@@ -1,4 +1,4 @@
-import {mat4, vec3, quat, mat3} from 'gl-matrix'
+import {mat4, vec3, quat, mat3, vec2} from 'gl-matrix'
 import { WebGLResourceManager } from './rendering/resource-management';
 import { VERTEX_STRIDE_ACTORS, VERTEX_STRIDE_STATIC } from './rendering/mesh/mesh-constants';
 import { Textures } from './io/textures';
@@ -18,11 +18,10 @@ var matMVP = mat4.create();
 var matVP = mat4.create();
 var matV = mat4.create();
 
+const MAX_LIGHTS_PER_CALL = 2
 var matLight = mat4.create();
-var matLightInfo = mat4.create();
-
-var visLights = new Array(MAX_VIS_LIGHTS);
-var nVisLights = 0;
+var lightPositions = new Float32Array(MAX_LIGHTS_PER_CALL * 3);
+var lightColors = new Float32Array(MAX_LIGHTS_PER_CALL * 4);
 
 const MAX_TO_RENDER = 512;
 var pvs = new Array(MAX_TO_RENDER);
@@ -86,9 +85,7 @@ export class Renderer{
         ////////////////////////////////////////////////////////////
         //Determine visible lights and if shadows exist
         ////////////////////////////////////////////////////////////
-        visLights[0] = scene.level.fixedLights[0];
-        visLights[1] = scene.level.fixedLights[1];
-        nVisLights = 2;
+
 
         ////////////////////////////////////////////////////////////
         // SHADOW PASS
@@ -185,7 +182,7 @@ export class Renderer{
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.actorsIBuffer.buffer);
 
         //Bind lights and shadowmap
-        this.updateShaderLights(shader);
+        this.updateShaderLights(shader, scene.level.fixedLights, scene.players[0].pos[0], scene.players[0].pos[2]);
         gl.activeTexture(gl.TEXTURE3);
         gl.uniform1i(shader.uniformLocations.shadowTex, 3);
         gl.bindTexture(gl.TEXTURE_2D, this.shadowFBO[1])
@@ -254,13 +251,9 @@ export class Renderer{
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.staticIBuffer);
 
         //Bind lights and shadowmap
-        this.updateShaderLights(shader);
         gl.activeTexture(gl.TEXTURE3);
         gl.uniform1i(shader.uniformLocations.shadowTex, 3);
         gl.bindTexture(gl.TEXTURE_2D, this.shadowFBO[1])
-        
-        //INFO FOR NEAREST LIGHTS
-        gl.uniformMatrix4fv(shader.uniformLocations.matLightInfo, false, matLightInfo);
 
         //Draw all level tiles
         gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matVP);
@@ -286,6 +279,7 @@ export class Renderer{
                         if(t < 0)
                             continue;
 
+                        this.updateShaderLights(shader, scene.level.fixedLights, x << scene.level.spacing, y << scene.level.spacing);
                         gl.uniform2f(shader.uniformLocations.offset, x << scene.level.spacing, y << scene.level.spacing);
                         gl.drawElements(gl.TRIANGLES, m[t][0], gl.UNSIGNED_SHORT, m[t][1]);
                     }
@@ -319,28 +313,47 @@ export class Renderer{
         return [fbo, tex]
     }
 
-    updateShaderLights(shader, x, y){
-        //INFO FOR NEAREST LIGHTS
-        {
-            let l = visLights[0];
-            matLightInfo[0] = l.pos[0];
-            matLightInfo[1] = l.pos[1];
-            matLightInfo[2] = l.pos[2];
-            matLightInfo[3] = l.pow;
-            matLightInfo[4] = l.col[0];
-            matLightInfo[5] = l.col[1];
-            matLightInfo[6] = l.col[2];
+    updateShaderLights(shader, lights, x, y){
+        let nLights = 2;
+        let i = 0, j = 0, k = 0;
+        while(k < lights.length){
+            const l = lights[k++];
+            lightPositions[i++] = l.pos[0];
+            lightPositions[i++] = l.pos[1];
+            lightPositions[i++] = l.pos[2];
 
-            l = visLights[1];
-            matLightInfo[8] = l.pos[0];
-            matLightInfo[9] = l.pos[1];
-            matLightInfo[10] = l.pos[2];
-            matLightInfo[11] = l.pow;
-            matLightInfo[12] = l.col[0];
-            matLightInfo[13] = l.col[1];
-            matLightInfo[14] = l.col[2];
-
-            gl.uniformMatrix4fv(shader.uniformLocations.matLightInfo, false, matLightInfo);
+            lightColors[j++] = l.col[0];
+            lightColors[j++] = l.col[1];
+            lightColors[j++] = l.col[2];
+            lightColors[j++] = l.col[3];
         }
+
+        gl.uniform3fv(shader.uniformLocations.lightPositions, lightPositions, 0, i);
+        gl.uniform4fv(shader.uniformLocations.lightColors, lightColors, 0, j);
+        // visLights.sort((a, b) => {
+        //     return b.pos[0] - a.pos[0]
+        // });
+
+        // {
+        //     let l = visLights[0];
+        //     matLightInfo[0] = l.pos[0];
+        //     matLightInfo[1] = l.pos[1];
+        //     matLightInfo[2] = l.pos[2];
+        //     matLightInfo[3] = l.pow;
+        //     matLightInfo[4] = l.col[0];
+        //     matLightInfo[5] = l.col[1];
+        //     matLightInfo[6] = l.col[2];
+
+        //     l = visLights[1];
+        //     matLightInfo[8] = l.pos[0];
+        //     matLightInfo[9] = l.pos[1];
+        //     matLightInfo[10] = l.pos[2];
+        //     matLightInfo[11] = l.pow;
+        //     matLightInfo[12] = l.col[0];
+        //     matLightInfo[13] = l.col[1];
+        //     matLightInfo[14] = l.col[2];
+
+        //     gl.uniformMatrix4fv(shader.uniformLocations.matLightInfo, false, matLightInfo);
+        // }
     }
 }
