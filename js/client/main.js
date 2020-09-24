@@ -69,6 +69,22 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
                     pos: vec3.fromValues(7 * 32, 30, 36),
                     col: COLOR_FLAME_TORCH
                 },
+                {
+                    pos: vec3.fromValues(9 * 32, 30, 36),
+                    col: COLOR_FLAME_TORCH
+                },
+                {
+                    pos: vec3.fromValues(11 * 32, 30, 36),
+                    col: COLOR_FLAME_TORCH
+                },
+                {
+                    pos: vec3.fromValues(14 * 32, 30, 36),
+                    col: COLOR_FLAME_TORCH
+                },
+                {
+                    pos: vec3.fromValues(16 * 32, 30, 36),
+                    col: COLOR_FLAME_TORCH
+                },
             ],
             tiles: [X,5,5,5,4,5,5,4,5,5,5,4,5,5,4,5,5,5,4,5,4,5,5,X,
                     8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,

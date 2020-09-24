@@ -6,7 +6,6 @@ import { Textures } from './io/textures';
 const NEAR_CLIP = 0.1;
 const FAR_CLIP = 100;
 const FOV = 60;
-const MAX_VIS_LIGHTS = 16;
 const MAX_SHADOW_LIGHTS = 4;
 
 var gl = null;
@@ -316,7 +315,14 @@ export class Renderer{
     updateShaderLights(shader, lights, x, y){
         let nLights = 2;
         let i = 0, j = 0, k = 0;
-        while(k < lights.length){
+        lights = lights.slice()
+        lights.sort((a, b) => {
+            const distanceA = Math.pow(a.pos[0] - x, 2) + Math.pow(a.pos[2] - y, 2),
+                distanceB = Math.pow(b.pos[0] - x, 2) + Math.pow(b.pos[2] - y, 2);
+
+            return distanceA - distanceB;
+        });
+        while(k < MAX_LIGHTS_PER_CALL){
             const l = lights[k++];
             lightPositions[i++] = l.pos[0];
             lightPositions[i++] = l.pos[1];
