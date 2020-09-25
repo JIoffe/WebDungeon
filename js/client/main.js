@@ -66,7 +66,7 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
                     col: COLOR_FLAME_TORCH
                 },
                 {
-                    pos: vec3.fromValues(7 * 32, 30, 36),
+                    pos: vec3.fromValues(6 * 32, 30, 36),
                     col: COLOR_FLAME_TORCH
                 },
                 {

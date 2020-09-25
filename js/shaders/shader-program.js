@@ -20,9 +20,11 @@ export const Uniforms = {
     matNormal: 'uNormalMatrix',
 
     matLight: 'uMatLight',
+    shadowCoords: 'uShadowCoords',
 
     lightPositions: 'uLightPositions',
     lightColors: 'uLightColors',
+    shadowIndices: 'uShadowIndices',
 
     
     diffuse: 'uDiffuse',

@@ -1,7 +1,6 @@
 import {mat4, vec3, quat, mat3, vec2} from 'gl-matrix'
 import { WebGLResourceManager } from './rendering/resource-management';
 import { VERTEX_STRIDE_ACTORS, VERTEX_STRIDE_STATIC } from './rendering/mesh/mesh-constants';
-import { Textures } from './io/textures';
 
 const NEAR_CLIP = 0.1;
 const FAR_CLIP = 100;
@@ -17,15 +16,24 @@ var matMVP = mat4.create();
 var matVP = mat4.create();
 var matV = mat4.create();
 
-const MAX_LIGHTS_PER_CALL = 2
-var matLight = mat4.create();
+const MAX_LIGHTS_PER_CALL = 4
 var lightPositions = new Float32Array(MAX_LIGHTS_PER_CALL * 3);
 var lightColors = new Float32Array(MAX_LIGHTS_PER_CALL * 4);
+var shadowIndices = new Int8Array(MAX_LIGHTS_PER_CALL);
+var matLight = [mat4.create(),mat4.create(),mat4.create(),mat4.create()];
+var matLightCoords = new Float32Array([
+    0,0, 0.5,0.5,
+    0,0.5 ,0.5,1,
+    0.5,0.5, 1,1,
+    0.5,0 ,1,0.5
+]);
+
 
 const MAX_TO_RENDER = 512;
 var pvs = new Array(MAX_TO_RENDER);
 
-const SHADOWMAP_SIZE = 256;
+//The size of the entire shadowmap atlas
+const SHADOWMAP_SIZE = 512;
 
 //Variables we will use
 let i = 0;
@@ -82,76 +90,113 @@ export class Renderer{
         }
 
         ////////////////////////////////////////////////////////////
-        //Determine visible lights and if shadows exist
-        ////////////////////////////////////////////////////////////
-
-
-        ////////////////////////////////////////////////////////////
         // SHADOW PASS
         ////////////////////////////////////////////////////////////
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFBO[0]);
-        gl.viewport(0, 0, SHADOWMAP_SIZE, SHADOWMAP_SIZE);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        
+        //First determine which shadow-casting lights to prioritize
+        if(!!scene.localPlayer)
+        {
+            const px = scene.localPlayer.pos[0], py = scene.localPlayer.pos[2];
 
-        shader = shaders[2];
-        gl.useProgram(shader.program);
+            scene.level.fixedLights.sort((a, b) => {
+                a.si = -1; 
+                b.si = -1;
+                const distanceA = Math.pow(a.pos[0] - px, 2) + Math.pow(a.pos[2] - py, 2),
+                    distanceB = Math.pow(b.pos[0] - px, 2) + Math.pow(b.pos[2] - py, 2);
+    
+                return distanceA - distanceB;
+            });
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.resources.actorsVBuffer.buffer);
-        gl.enableVertexAttribArray(1);
-        gl.enableVertexAttribArray(2);
-        gl.disableVertexAttribArray(3);
-        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, VERTEX_STRIDE_ACTORS, 0); //POS
-        gl.vertexAttribPointer(1, 4, gl.UNSIGNED_BYTE, false, VERTEX_STRIDE_ACTORS, 12); // VERTEX GROUPS (BONES)
-        gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, VERTEX_STRIDE_ACTORS, 16); // WEIGHTS
+            const matLightProj = mat4.create();
+            mat4.perspective(matLightProj, 140 * Math.PI / 180, 1, 0.1, 400);
 
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.actorsIBuffer.buffer);
-
-        //Render player shadows
-        arm = this.resources.armatures.ARM_PLAYER;
-        if(!!arm){
-            gl.activeTexture(gl.TEXTURE2);
-            gl.bindTexture(gl.TEXTURE_2D, arm);
-            gl.uniform1i(shader.uniformLocations.boneTex, 2);
-        }
-
-        const matLightProj = mat4.create();
-        const matLightView = mat4.create();
-        mat4.perspective(matLightProj, 140 * Math.PI / 180, 1, 0.1, 500);
-        mat4.lookAt(matLightView, [180, 20, 90], [180, 0, 90], [0,0,1]);
-        mat4.mul(matLight, matLightProj, matLightView);
-
-        i = scene.players.length;
-        while(i--){
-            const p = scene.players[i];
-
-            //Update position in shader
-            mat4.fromRotationTranslation(matMVP, p.rRot, p.pos);
-            mat4.multiply(matMVP, matLight, matMVP);
-            gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matMVP);
-            gl.uniform3fv(shader.uniformLocations.keyframes, p.anim.tween);
-
-            this.drawMesh(this.resources.meshes[p.head]);
-            this.drawMesh(this.resources.meshes[p.body]);
-
-            let j = p.gear.length;
-            while(j--){
-                if(!p.gear[j])
-                    continue;
-
-                const a = this.resources.assets[p.gear[j]];
-
-                if(!a)
-                    continue;
-
-                this.drawMesh(a.mesh);
+            const matLightView = mat4.create();
+            //Flag lights wiht shadowmap indices
+            i = MAX_SHADOW_LIGHTS;
+            while(i--){
+                const l = scene.level.fixedLights[i];
+                scene.level.fixedLights[i].si = i;
+                           
+                mat4.lookAt(matLightView, l.pos, [l.pos[0], 0, l.pos[2]], [0,0,1]);
+                mat4.mul(matLight[i], matLightProj, matLightView);
             }
         }
+
+        gl.enable(gl.SCISSOR_TEST);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFBO[0]);
+        gl.colorMask(false, false, false, false);
+        //For each shadow casting light, draw shadowmap
+        let li = MAX_SHADOW_LIGHTS;
+        while(li--){
+            {
+                //constrain to specific part of atlas
+                let j = li << 2;
+
+                gl.viewport(SHADOWMAP_SIZE * matLightCoords[j], 
+                    SHADOWMAP_SIZE * matLightCoords[j+1], 256, 256);
+
+                gl.scissor(SHADOWMAP_SIZE * matLightCoords[j], 
+                    SHADOWMAP_SIZE * matLightCoords[j+1], 256, 256);
+
+                gl.clear(gl.DEPTH_BUFFER_BIT);
+            }
+            
+            shader = shaders[2];
+            gl.useProgram(shader.program);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.resources.actorsVBuffer.buffer);
+            gl.enableVertexAttribArray(1);
+            gl.enableVertexAttribArray(2);
+            gl.disableVertexAttribArray(3);
+            gl.vertexAttribPointer(0, 3, gl.FLOAT, false, VERTEX_STRIDE_ACTORS, 0); //POS
+            gl.vertexAttribPointer(1, 4, gl.UNSIGNED_BYTE, false, VERTEX_STRIDE_ACTORS, 12); // VERTEX GROUPS (BONES)
+            gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, VERTEX_STRIDE_ACTORS, 16); // WEIGHTS
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.actorsIBuffer.buffer);
+
+            //Render player shadows
+            arm = this.resources.armatures.ARM_PLAYER;
+            if(!!arm){
+                gl.activeTexture(gl.TEXTURE2);
+                gl.bindTexture(gl.TEXTURE_2D, arm);
+                gl.uniform1i(shader.uniformLocations.boneTex, 2);
+            }
+
+            i = scene.players.length;
+            while(i--){
+                const p = scene.players[i];
+
+                //Update position in shader
+                mat4.fromRotationTranslation(matMVP, p.rRot, p.pos);
+                mat4.multiply(matMVP, matLight[li], matMVP);
+                gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matMVP);
+                gl.uniform3fv(shader.uniformLocations.keyframes, p.anim.tween);
+
+                this.drawMesh(this.resources.meshes[p.head]);
+                this.drawMesh(this.resources.meshes[p.body]);
+
+                let j = p.gear.length;
+                while(j--){
+                    if(!p.gear[j])
+                        continue;
+
+                    const a = this.resources.assets[p.gear[j]];
+
+                    if(!a)
+                        continue;
+
+                    this.drawMesh(a.mesh);
+                }
+            }
+        }
+        gl.disable(gl.SCISSOR_TEST);
 
         ///////////////////////////////////////////////////////////////
         // FORWARD PASS
         ///////////////////////////////////////////////////////////////
         gl.viewport(0, 0, w, h);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.colorMask(true, true, true, true);
 
         gl.clearColor(0,0,0,1);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -185,7 +230,7 @@ export class Renderer{
         gl.activeTexture(gl.TEXTURE3);
         gl.uniform1i(shader.uniformLocations.shadowTex, 3);
         gl.bindTexture(gl.TEXTURE_2D, this.shadowFBO[1])
-        gl.uniformMatrix4fv(shader.uniformLocations.matLight, false, matLight);
+        this.updateShadowMatrices(shader);
 
         //RENDER ALL PLAYERS - assume players are always visible
         arm = this.resources.armatures.ARM_PLAYER;
@@ -256,7 +301,8 @@ export class Renderer{
 
         //Draw all level tiles
         gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matVP);
-        gl.uniformMatrix4fv(shader.uniformLocations.matLight, false, matLight);
+        //For shadowmap
+        this.updateShadowMatrices(shader);
     
         if(!!scene.level){
             //Set static geometry texture (atlas)
@@ -313,7 +359,6 @@ export class Renderer{
     }
 
     updateShaderLights(shader, lights, x, y){
-        let nLights = 2;
         let i = 0, j = 0, k = 0;
         lights = lights.slice()
         lights.sort((a, b) => {
@@ -323,7 +368,7 @@ export class Renderer{
             return distanceA - distanceB;
         });
         while(k < MAX_LIGHTS_PER_CALL){
-            const l = lights[k++];
+            const l = lights[k];
             lightPositions[i++] = l.pos[0];
             lightPositions[i++] = l.pos[1];
             lightPositions[i++] = l.pos[2];
@@ -332,34 +377,20 @@ export class Renderer{
             lightColors[j++] = l.col[1];
             lightColors[j++] = l.col[2];
             lightColors[j++] = l.col[3];
+            shadowIndices[k] = l.si;
+            ++k;
         }
 
         gl.uniform3fv(shader.uniformLocations.lightPositions, lightPositions, 0, i);
         gl.uniform4fv(shader.uniformLocations.lightColors, lightColors, 0, j);
-        // visLights.sort((a, b) => {
-        //     return b.pos[0] - a.pos[0]
-        // });
+        gl.uniform1iv(shader.uniformLocations.shadowIndices, shadowIndices, 0, k);
+    }
 
-        // {
-        //     let l = visLights[0];
-        //     matLightInfo[0] = l.pos[0];
-        //     matLightInfo[1] = l.pos[1];
-        //     matLightInfo[2] = l.pos[2];
-        //     matLightInfo[3] = l.pow;
-        //     matLightInfo[4] = l.col[0];
-        //     matLightInfo[5] = l.col[1];
-        //     matLightInfo[6] = l.col[2];
-
-        //     l = visLights[1];
-        //     matLightInfo[8] = l.pos[0];
-        //     matLightInfo[9] = l.pos[1];
-        //     matLightInfo[10] = l.pos[2];
-        //     matLightInfo[11] = l.pow;
-        //     matLightInfo[12] = l.col[0];
-        //     matLightInfo[13] = l.col[1];
-        //     matLightInfo[14] = l.col[2];
-
-        //     gl.uniformMatrix4fv(shader.uniformLocations.matLightInfo, false, matLightInfo);
-        // }
+    updateShadowMatrices(shader){
+        let i = MAX_SHADOW_LIGHTS;
+        while(i--){
+            gl.uniformMatrix4fv(gl.getUniformLocation(shader.program, `uMatLight[${i}]`), false, matLight[i]);
+        }
+        gl.uniform4fv(shader.uniformLocations.shadowCoords, matLightCoords);
     }
 }
