@@ -191,7 +191,7 @@ export class Renderer{
                 }
             }
 
-            //Draw all enemies/props/etc.
+            //Draw all enemies/npcs/etc.
             i = scene.actors.length;
             while(i--){
                 const e = scene.actors[i];
@@ -204,7 +204,7 @@ export class Renderer{
                 mat4.fromRotationTranslation(matMVP, quat.setAxisAngle(aRot, VEC3_UP, e.angle), e.pos);
                 mat4.multiply(matMVP, matLight[li], matMVP);
                 gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matMVP);
-                gl.uniform3fv(shader.uniformLocations.keyframes, [0,0,0]);
+                gl.uniform3fv(shader.uniformLocations.keyframes, e.anim.tween);
     
                 this.updateShaderArmature(shader, a.arm);
                 this.drawMesh(a.mesh);
@@ -306,7 +306,7 @@ export class Renderer{
 
             mat4.fromRotationTranslation(matMVP, quat.setAxisAngle(aRot, VEC3_UP, e.angle), e.pos);
             gl.uniformMatrix4fv(shader.uniformLocations.matWorld, false, matMVP);
-            gl.uniform3fv(shader.uniformLocations.keyframes, [0,0,0]);
+            gl.uniform3fv(shader.uniformLocations.keyframes, e.anim.tween);
 
             this.updateShaderArmature(shader, a.arm);
 

@@ -76,7 +76,6 @@ class AnimationSingleton{
     }
 
     onAssetLoaded(asset){
-        console.log('pooping', asset.name);
         switch(asset.type){
             case 'ARMATURE':
                 this.parseArmatures(asset);
@@ -109,6 +108,10 @@ class AnimationSingleton{
 
     getInstance(animationName){
         return new AnimationController(this.animations[animationName]);
+    }
+
+    refreshInstance(ac, animationName){
+        ac.animations = this.animations[animationName];
     }
 }
 

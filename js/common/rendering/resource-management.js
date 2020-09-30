@@ -7,6 +7,7 @@ import { MessageBus } from "../messaging/message-bus";
 import { MessageType } from "../messaging/message-type";
 import { KeyedMutex } from "../util/concurrency";
 import { parseActorMeshes, parseStaticMeshes } from "./mesh/mesh-parsing";
+import { Animations } from "./animation";
 
 const assetMutex = new KeyedMutex
 
@@ -208,5 +209,7 @@ export class WebGLResourceManager{
             this.armatures[armature.name.toUpperCase()] = dataTexture;
             console.log(`Created data texture for ${armature.name}`);
         }
+             
+        Animations.parseArmatures(...armatureAssets);
     }
 }

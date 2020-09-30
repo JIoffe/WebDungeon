@@ -119,6 +119,11 @@ export class Scene{
 
             }
         }
+
+        let i = this.actors.length;
+        while(i--){
+            this.actors[i].update(this, time, dT);
+        }
     }
 
     validatePosition(pos, delta){

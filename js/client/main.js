@@ -30,7 +30,6 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
         while(i--){
             const asset = await RestClient.getJSON(coreAssetList[i]);   
             await renderer.resources.onAssetLoaded(asset);
-            Animations.onAssetLoaded(asset);
         }
 
         MessageBus.post(MessageType.PLAYER_ADDED, {
