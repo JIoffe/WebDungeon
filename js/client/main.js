@@ -35,8 +35,7 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
 
         MessageBus.post(MessageType.PLAYER_ADDED, {
             name: "SELF",
-            ///gear: ['bare_head0', 'mail0_torso', 'leather0_legs', 'bare_arm']
-            gear: [null, 'mail0_torso', 'leather0_legs', null],
+            gear: ['sword0', 'mail0_torso', 'leather0_legs', null],
             head: 'head0',
             body: 'arms0',
             state: 0,
@@ -46,6 +45,15 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
             rot: quat.create(),
             rRot: quat.create() //RENDER ROTATION
         })
+
+        MessageBus.post(MessageType.ACTOR_ADDED, ...[
+            {
+                type: 'crabby',
+                pos: vec3.fromValues(9 * 32, 0, 66),
+                angle: 0,
+                state: 0
+            }
+        ])
 
         //To mark the tile empty
         const X = -1;

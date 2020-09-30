@@ -32,6 +32,7 @@ export class WebGLResourceManager{
 
         MessageBus.subscribe(MessageType.PLAYER_ADDED, data => this.onPlayerAdded(data))
         MessageBus.subscribe(MessageType.ASSET_DOWNLOADED, asset => this.onAssetLoaded(asset));
+        MessageBus.subscribe(MessageType.ACTOR_ADDED, data => this.onActorAdded(data));
     }
 
     init(){
@@ -52,9 +53,18 @@ export class WebGLResourceManager{
         data.gear.filter(slot => !!slot).forEach(slot => this.downloadAsset(`/assets/gear_defs/${slot}.json`));
     }
 
+    onActorAdded(...data){
+        if(!data)
+            return;
+
+        data.filter((actor, i) => data.findIndex(a => a.type === actor.type) === i)
+            .forEach(actor => this.downloadAsset(`/assets/actor_defs/${actor.type}.json`));
+    }
+
     async downloadAsset(path){
         const asset = await RestClient.getJSON(path);
         await this.onAssetLoaded(asset);
+        return asset;
     }
 
     async onAssetLoaded(asset){
@@ -105,16 +115,19 @@ export class WebGLResourceManager{
             if(!!this.assets[def.name])
                 return;
 
-            const mesh = await RestClient.getJSON(def.mesh);
-            const mat = await RestClient.getJSON(def.mat);
-
-            await this.parseMaterials(mat);
-            await this.parseMeshes(mesh);
+            const mesh = await this.downloadAsset(def.mesh);
+            const mat = await this.downloadAsset(def.mat);
 
             this.assets[def.name] = {
                 mat: this.materials[mat.name],
                 mesh: this.meshes[mesh.name]
             };
+
+            //Add armature if one is defined
+            if(!!def.arm){
+                const arm = await this.downloadAsset(def.arm);
+                this.assets[def.name].arm = this.armatures[arm.name];
+            }
         }
         finally{
             lock.release();

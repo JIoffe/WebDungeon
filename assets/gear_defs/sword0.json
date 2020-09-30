@@ -1,0 +1,7 @@
+{
+	"type": "ASSETDEF",
+	"category": "PLAYER",
+	"name": "sword0",
+	"mesh": "/assets/models/weapons/sword0.json",
+	"mat": "/assets/materials/sword0.json"
+}

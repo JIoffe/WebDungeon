@@ -2,21 +2,20 @@ import {mat4, vec3, quat, mat3, vec2} from 'gl-matrix'
 import { WebGLResourceManager } from './rendering/resource-management';
 import { VERTEX_STRIDE_ACTORS, VERTEX_STRIDE_STATIC } from './rendering/mesh/mesh-constants';
 
-const NEAR_CLIP = 0.1;
-const FAR_CLIP = 100;
-const FOV = 60;
-const MAX_SHADOW_LIGHTS = 4;
 
 var gl = null;
 var frameWidth = -1;
 var frameHeight = -1;
 
+const VEC3_UP = vec3.fromValues(0,1,0);
+
 //Buffered references for transforms
 var matMVP = mat4.create();
 var matVP = mat4.create();
-var matV = mat4.create();
+var aRot = quat.create(); //actor rotation
 
-const MAX_LIGHTS_PER_CALL = 4
+const MAX_LIGHTS_PER_CALL = 4;
+const MAX_SHADOW_LIGHTS = 4;
 var lightPositions = new Float32Array(MAX_LIGHTS_PER_CALL * 3);
 var lightColors = new Float32Array(MAX_LIGHTS_PER_CALL * 4);
 var shadowIndices = new Int8Array(MAX_LIGHTS_PER_CALL);
@@ -27,6 +26,11 @@ var matLightCoords = new Float32Array([
     0.5,0.5, 1,1,
     0.5,0 ,1,0.5
 ]);
+
+//The projection is the same for all lights (for now)
+const matLightProj = mat4.create();
+mat4.perspective(matLightProj, 140 * Math.PI / 180, 1, 0.1, 400);
+const matLightView = mat4.create();
 
 
 const MAX_TO_RENDER = 512;
@@ -107,10 +111,6 @@ export class Renderer{
                 return distanceA - distanceB;
             });
 
-            const matLightProj = mat4.create();
-            mat4.perspective(matLightProj, 140 * Math.PI / 180, 1, 0.1, 400);
-
-            const matLightView = mat4.create();
             //Flag lights wiht shadowmap indices
             i = MAX_SHADOW_LIGHTS;
             while(i--){
@@ -154,10 +154,12 @@ export class Renderer{
 
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.actorsIBuffer.buffer);
 
+            //The only texture needed from here is the armature index
+            gl.activeTexture(gl.TEXTURE2);
+
             //Render player shadows
             arm = this.resources.armatures.ARM_PLAYER;
             if(!!arm){
-                gl.activeTexture(gl.TEXTURE2);
                 gl.bindTexture(gl.TEXTURE_2D, arm);
                 gl.uniform1i(shader.uniformLocations.boneTex, 2);
             }
@@ -187,6 +189,25 @@ export class Renderer{
 
                     this.drawMesh(a.mesh);
                 }
+            }
+
+            //Draw all enemies/props/etc.
+            i = scene.actors.length;
+            while(i--){
+                const e = scene.actors[i];
+                const a = this.resources.assets[e.type];
+    
+                if(!a){
+                    continue;
+                }
+                
+                mat4.fromRotationTranslation(matMVP, quat.setAxisAngle(aRot, VEC3_UP, e.angle), e.pos);
+                mat4.multiply(matMVP, matLight[li], matMVP);
+                gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matMVP);
+                gl.uniform3fv(shader.uniformLocations.keyframes, [0,0,0]);
+    
+                this.updateShaderArmature(shader, a.arm);
+                this.drawMesh(a.mesh);
             }
         }
         gl.disable(gl.SCISSOR_TEST);
@@ -232,18 +253,14 @@ export class Renderer{
         gl.bindTexture(gl.TEXTURE_2D, this.shadowFBO[1])
         this.updateShadowMatrices(shader);
 
-        //RENDER ALL PLAYERS - assume players are always visible
-        arm = this.resources.armatures.ARM_PLAYER;
-        if(!!arm){
-            gl.activeTexture(gl.TEXTURE2);
-            gl.bindTexture(gl.TEXTURE_2D, arm);
-            gl.uniform1i(shader.uniformLocations.boneTex, 2);
-        }
-
-        gl.activeTexture(gl.TEXTURE0);
+        //Prepare diffuse tex index for all actors
         gl.uniform1i(shader.uniformLocations.diffuse, 0);
         gl.uniformMatrix4fv(shader.uniformLocations.matViewProj, false, matVP);
 
+        //RENDER ALL PLAYERS - assume players are always visible
+        this.updateShaderArmature(shader, this.resources.armatures.ARM_PLAYER);
+
+        gl.activeTexture(gl.TEXTURE0);
         i = scene.players.length;
         while(i--){
             const p = scene.players[i];
@@ -277,6 +294,26 @@ export class Renderer{
             }
         }
 
+        //Render all visible enemies sorted by type (for material)
+        let prevType = '';
+        i = scene.actors.length;
+        while(i--){
+            const e = scene.actors[i];
+            const a = this.resources.assets[e.type];
+
+            if(!a)
+                continue;
+
+            mat4.fromRotationTranslation(matMVP, quat.setAxisAngle(aRot, VEC3_UP, e.angle), e.pos);
+            gl.uniformMatrix4fv(shader.uniformLocations.matWorld, false, matMVP);
+            gl.uniform3fv(shader.uniformLocations.keyframes, [0,0,0]);
+
+            this.updateShaderArmature(shader, a.arm);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, a.mat.diffuse);
+            this.drawMesh(a.mesh);
+        }
 
         /////////////////////////////////////////////////////////////
         // STATIC GEOMETRY
@@ -392,5 +429,13 @@ export class Renderer{
             gl.uniformMatrix4fv(gl.getUniformLocation(shader.program, `uMatLight[${i}]`), false, matLight[i]);
         }
         gl.uniform4fv(shader.uniformLocations.shadowCoords, matLightCoords);
+    }
+
+    updateShaderArmature(shader, arm){
+        if(!!arm){
+            gl.activeTexture(gl.TEXTURE2);
+            gl.bindTexture(gl.TEXTURE_2D, arm);
+            gl.uniform1i(shader.uniformLocations.boneTex, 2);
+        }
     }
 }

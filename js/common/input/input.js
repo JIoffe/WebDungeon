@@ -2,18 +2,20 @@ const MLEFT = 0;
 const MUP = 1;
 const MRIGHT = 2;
 const MDOWN = 3;
+const MAIN_ATTACK = 4;
 
 const defaultKeys = [
     MLEFT, 37,
     MUP, 38,
     MRIGHT, 39,
-    MDOWN, 40
+    MDOWN, 40,
+    MAIN_ATTACK, 32
 ]
 
 class InputSingleton{
     constructor(document){
         this.keyMap = new Map()
-        this.state = new Uint8Array(4);
+        this.state = new Uint8Array(5);
 
         this.axisH = 0;
         this.axisV = 0;

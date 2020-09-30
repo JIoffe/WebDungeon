@@ -2,6 +2,8 @@ class AnimationController{
     constructor(animations){
         this.animations = animations;
         this.frame = 0;
+        this.speed = 1.;
+        this.isPlaying = false;
 
         this.tween = new Float32Array(3);
     }
@@ -10,19 +12,21 @@ class AnimationController{
      * Switches animation tracks for this controller
      * @param {string} trackName 
      */
-    set(trackName){
+    set(trackName, speed){
         this.anim = this.animations[trackName];
         this.frame = 0;
+        this.isPlaying = true;
+        if(!!speed)
+            this.speed = speed
     }
 
     /**
-     * 
-     * @param {number} delta 
      * returns vec3 with frames to interpolate in [0] and [1] and interpolation amount in [2]
+     * @param {number} delta delta time in MS
      */
     loop(delta){
         //should technically never hit the last frame directly
-        this.frame = (this.frame + delta) % this.anim.maxFrame;
+        this.frame = (this.frame + delta * this.speed) % this.anim.maxFrame;
         for(let i = this.anim.keyframes.length - 2; i >= 0; --i){
             const k0 = this.anim.keyframes[i];
             if(k0 <= this.frame){
@@ -34,6 +38,36 @@ class AnimationController{
             }
         }
     }
+
+    /**
+     * returns vec3 with frames to interpolate in [0] and [1] and interpolation amount in [2]
+     * --Will stop at end of animation
+     * @param {number} delta delta time in MS
+     */
+    play(delta){
+        if(this.frame === this.anim.maxFrame)
+            return this.tween;
+        
+        this.frame += delta * this.speed;
+        if(this.frame >= this.anim.maxFrame){
+            this.isPlaying = false;
+            this.tween[0] = this.anim.maxFrame + this.anim.rowOffset;
+            this.tween[1] = this.tween[0];
+            this.tween[2] = 0;
+            return this.tween;
+        }
+
+        for(let i = this.anim.keyframes.length - 2; i >= 0; --i){
+            const k0 = this.anim.keyframes[i];
+            if(k0 <= this.frame){
+                const k1 = this.anim.keyframes[i + 1];
+                this.tween[0] = i + this.anim.rowOffset;
+                this.tween[1] = this.tween[0] + 1;
+                this.tween[2] = (this.frame - k0) / (k1 - k0);
+                return this.tween;
+            }
+        }        
+    }
 }
 
 class AnimationSingleton{
@@ -42,6 +76,7 @@ class AnimationSingleton{
     }
 
     onAssetLoaded(asset){
+        console.log('pooping', asset.name);
         switch(asset.type){
             case 'ARMATURE':
                 this.parseArmatures(asset);

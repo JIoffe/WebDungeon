@@ -1,0 +1,8 @@
+{
+	"type": "ASSETDEF",
+	"category": "ENEMY",
+	"name": "crabby",
+	"mesh": "/assets/models/enemies/crabby.json",
+	"mat": "/assets/materials/crabby.json",
+	"arm": "/assets/animations/crabby_anim.json"
+}
