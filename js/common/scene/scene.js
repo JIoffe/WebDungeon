@@ -4,7 +4,7 @@ import { Animations } from "../rendering/animation";
 import { Input } from "../input/input";
 import { Camera } from "../camera";
 import { vec3, quat } from "gl-matrix";
-import { VEC3_TEMP, RadToDeg, VEC3_UP, DegToRad } from "../math";
+import { VEC3_TEMP, RadToDeg, DegToRad } from "../math";
 import { PlayerState } from "./player-state";
 import { ARM_PLAYER } from "../constants/armatures";
 import { ActorFactory } from "../actors/actor-factory";
@@ -13,6 +13,7 @@ const PLAYER_SPEED = 0.04;
 const PLAYER_SLERP_SPEED = 0.3;
 
 const cameraOffset = vec3.fromValues(0, 40, 60);
+const VEC3_UP = new Float32Array([0,1,0]);
 
 export class Scene{
     constructor(){
@@ -48,11 +49,12 @@ export class Scene{
         this.cameraToPlayer(player);
     }
 
-    onActorAdded(...data){
+    onActorAdded(data){
         if(!data)
             return;
 
         data.forEach(actorDef => this.actors.push(ActorFactory.create(actorDef)));
+        console.log(`Added ${data.length} actor(s)`);
     }
 
     update(time, dT){

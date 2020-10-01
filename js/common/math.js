@@ -33,3 +33,17 @@ export function moveRelativeY(pos, rot, dY){
     pos[1] += VEC3_TEMP[1] * dY;
     pos[2] += VEC3_TEMP[2] * dY;
 }
+
+export function lerp(a,b,s){
+    return a + (b - a) * s;
+}
+
+/**
+ * Returns the squared distance along the XZ plane between two vec3s
+ * @param {vec3} a 
+ * @param {vec3} b 
+ */
+export function sqDist2D(a,b){
+    const dx = a[0]-b[0], dy = a[2]-b[2]
+    return dx*dx + dy*dy;
+}

@@ -45,10 +45,16 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
             rRot: quat.create() //RENDER ROTATION
         })
 
-        MessageBus.post(MessageType.ACTOR_ADDED, ...[
+        MessageBus.post(MessageType.ACTOR_ADDED, [
             {
                 type: 'crabby',
                 pos: vec3.fromValues(9 * 32, 0, 66),
+                angle: 0,
+                state: 0
+            },
+            {
+                type: 'crabby',
+                pos: vec3.fromValues(11 * 32, 0, 86),
                 angle: 0,
                 state: 0
             }

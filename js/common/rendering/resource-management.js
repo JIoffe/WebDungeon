@@ -54,7 +54,7 @@ export class WebGLResourceManager{
         data.gear.filter(slot => !!slot).forEach(slot => this.downloadAsset(`/assets/gear_defs/${slot}.json`));
     }
 
-    onActorAdded(...data){
+    onActorAdded(data){
         if(!data)
             return;
 
