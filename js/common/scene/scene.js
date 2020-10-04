@@ -11,8 +11,9 @@ import { ActorFactory } from "../actors/actor-factory";
 
 const PLAYER_SPEED = 0.04;
 const PLAYER_SLERP_SPEED = 0.3;
+const PLAYER_RADIUS = 8;
 
-const cameraOffset = vec3.fromValues(0, 40, 60);
+const cameraOffset = vec3.fromValues(0, 100, 60);
 const VEC3_UP = new Float32Array([0,1,0]);
 
 export class Scene{
@@ -74,14 +75,18 @@ export class Scene{
                     if(Input.state[4]){
                         this.localPlayer.state = PlayerState.MATTACK;
                     }else{
-                        const velocityX = Input.axisH;
-                        const velocityY = Input.axisV;
+                        let velX = Input.axisH,
+                            velY = Input.axisV;
             
-                        this.localPlayer.pos[0] += dT * Input.axisH * PLAYER_SPEED;
-                        this.localPlayer.pos[2] -= dT * Input.axisV * PLAYER_SPEED;
-            
-                        if(!!velocityX || !!velocityY){
-                            const angle = Math.atan2(velocityY, velocityX) + 1.5707963267948966;
+                        if(!!velX || !!velY){
+                            //Normalize
+                            const w = 1/Math.sqrt(velX*velX + velY*velY);
+                            velX *= w;
+                            velY *= w;
+
+                            this.move(this.localPlayer.pos, dT * velX * PLAYER_SPEED, -dT * velY * PLAYER_SPEED, PLAYER_RADIUS);
+
+                            const angle = Math.atan2(velY, velX) + 1.5707963267948966;
                             quat.setAxisAngle(this.localPlayer.rot, VEC3_UP, angle);
                             quat.slerp(this.localPlayer.rRot, this.localPlayer.rRot, this.localPlayer.rot, PLAYER_SLERP_SPEED);
                             this.localPlayer.state = PlayerState.RUNNING;
@@ -128,12 +133,84 @@ export class Scene{
         }
     }
 
-    validatePosition(pos, delta){
-        
+    /**
+     * Updates vec3 position and ideal delta with best possible position. Assumes radius is smaller than tile size
+     * @param {vec3} pos - position [x,y,z]
+     * @param {number} dx - delta x
+     * @param {number} dy - delta y (horizontal plane)
+     * @param {number} r - collision radius
+     */
+    move(pos,dx,dy,r){
+        //let a,b,c be scan points
+        //Check Y and X axes separately
+        let a = (pos[0] - r) >> 5,
+            b = (pos[0] + r) >> 5,
+            c = (pos[2] + dy + (dy > 0 ? r : -r)) >> 5
+
+        let i = a + c * this.level.w
+        if(this.level.tiles[i] !== 0 || (a !== b && this.level.tiles[i+1] !== 0))
+            dy = 0;
+
+        a = (pos[2] - r) >> 5
+        b = (pos[2] + r) >> 5
+        c = (pos[0] + dx + (dx > 0 ? r : -r)) >> 5
+
+        i = c + a * this.level.w
+        if(this.level.tiles[i] !== 0 || (a !== b && this.level.tiles[i+this.level.w] !== 0))
+            dx = 0;
+
+        pos[0] += dx
+        pos[2] += dy
+    }
+
+    /**
+     * Scans for a hit against the level grid against a circle at x,y with radius r
+     * @param {number} x 
+     * @param {number} y 
+     * @param {number} r 
+     */
+    scanGrid(x,y,r){
+
     }
 
     cameraToPlayer(player){
         vec3.add(this.mainCamera.pos, player.pos, cameraOffset);
         vec3.copy(this.mainCamera.lookat, player.pos);
+    }
+
+    /**
+     * Determines if there exists a clear line of sight between (sx,sy) and (tx,ty) with maximum distance d
+     * @param {number} sx - start x
+     * @param {number} sy - start y
+     * @param {number} tx - target x
+     * @param {number} ty - target y
+     */
+    lineOfSight(sx,sy,tx,ty){
+        sx = sx >> 5
+        sy = sy >> 5
+        tx = tx >> 5
+        ty = ty >> 5
+
+        const dx = tx - sx, dy = ty - sy,
+            steps = Math.max(Math.abs(dx), Math.abs(dy)),
+            xInc = dx / steps,
+            yInc = dy / steps,
+            tiles = this.level.tiles,
+            w = this.level.w
+
+        let x = sx, y = sy, i = steps
+        while(i--){
+            if(tiles[Math.floor(x) + Math.floor(y) * w] !== 0)
+                return false;
+
+            x += xInc
+            y += yInc
+        }
+
+        return true;
+    }
+
+    findPath(sx,sy,tx,ty){
+  
     }
 }
