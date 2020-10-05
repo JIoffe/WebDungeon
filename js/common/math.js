@@ -47,3 +47,8 @@ export function sqDist2D(a,b){
     const dx = a[0]-b[0], dy = a[2]-b[2]
     return dx*dx + dy*dy;
 }
+
+export function sqDist(ax, ay, bx, by){
+    const dx = ax-bx, dy = ay-by
+    return dx*dx + dy*dy;
+}
