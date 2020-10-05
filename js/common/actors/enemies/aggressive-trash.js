@@ -1,5 +1,5 @@
 import { ARM_CRABBY } from "../../constants/armatures";
-import { lerp, sqDist2D } from "../../math";
+import { sqDist2D } from "../../math";
 import { Animations } from "../../rendering/animation";
 import { PLAYER_RADIUS } from "../../scene/scene";
 import { BaseActor } from "../base-actor";
@@ -7,7 +7,7 @@ import { BaseActor } from "../base-actor";
  * Wanders aimlessly until players draw near, then chases and attacks relentlessly.
  */
 const trashTable = {
-    crabby: [ARM_CRABBY]
+    crabby: [ARM_CRABBY, 2]
 };
 
 const AGRO_DIST = 2600;
@@ -25,6 +25,8 @@ export class AggressiveTrash extends BaseActor{
 
         const tableEntry = trashTable[type];
         this.anim = Animations.getInstance(tableEntry[0]);
+        this.hp = tableEntry[1];
+        this.maxHP = this.hp;
     }
 
     update(scene, time, dT){
@@ -40,8 +42,8 @@ export class AggressiveTrash extends BaseActor{
             {
                 const target = scene.localPlayer;
                 const d = sqDist2D(this.pos, target.pos);
-                if(d >= ATTACK_DIST && d <= AGRO_DIST){
-                    this.state = 1;
+                if(d <= AGRO_DIST){
+                    this.state = d <= ATTACK_DIST ? 3 : 1
                 }
                 break;
             }
@@ -50,7 +52,7 @@ export class AggressiveTrash extends BaseActor{
                 const target = scene.localPlayer;
                 const d = sqDist2D(this.pos, target.pos);
                 if(d <= ATTACK_DIST){
-                    this.state = 2;
+                    this.state = 0
                     break;
                 }
 
@@ -69,6 +71,12 @@ export class AggressiveTrash extends BaseActor{
                 scene.move(this, dX, dY, PLAYER_RADIUS);
                 break;
             }
+            case 3:
+            {
+                if(!this.anim.isPlaying)
+                    this.state = 0
+                break;
+            }
             default:
                 break;
         }
@@ -81,6 +89,9 @@ export class AggressiveTrash extends BaseActor{
                 case 2:
                     this.anim.set('Death', 0.02);
                     break;
+                case 3:
+                    this.anim.set('Attack', 0.04);
+                    break;
                 case 0:
                 default:
                     this.anim.set('Idle', 0.02);
@@ -92,12 +103,21 @@ export class AggressiveTrash extends BaseActor{
         //Loop or one shot animation as appropriate
         switch(this.state){
             case 2:
+            case 3:
                 this.anim.play(dT);
                 break;
             default:
                 this.anim.loop(dT);
                 break;
 
+        }
+    }
+
+    damage(amt){
+        this.hp -= amt;
+        if(this.hp <= 0 ){
+            this.hp = 0
+            this.state = 2;
         }
     }
 }

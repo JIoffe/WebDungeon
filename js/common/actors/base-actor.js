@@ -9,7 +9,6 @@ export class BaseActor{
         this.prevState = -1;
     }
 
-    update(scene, time, dT){
-
-    }
+    update(scene, time, dT){ }
+    damage(amt){ }
 }

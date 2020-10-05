@@ -14,6 +14,10 @@ const PLAYER_SLERP_SPEED = 0.3;
 export const PLAYER_RADIUS = 8;
 export const ACTOR_SQ_RADIUS = PLAYER_RADIUS*PLAYER_RADIUS;
 
+const SLASH_RADIUS = 16;
+const SLASH_SQ_RADIUS = SLASH_RADIUS*SLASH_RADIUS;
+const SLASH_FOV = 0.8;
+
 const cameraOffset = vec3.fromValues(0, 100, 60);
 const VEC3_UP = new Float32Array([0,1,0]);
 
@@ -21,6 +25,7 @@ export class Scene{
     constructor(){
         this.players = [];
         this.actors = [];
+        this.pveAttacks = [];
 
         this.localPlayer = null;
         this.mainCamera = new Camera();
@@ -45,6 +50,9 @@ export class Scene{
         player.anim = Animations.getInstance(ARM_PLAYER);
         player.anim.set('Idle', 0.02);
 
+        player.lookX = 0
+        player.lookY = 1
+
         this.players.push(player);
         this.localPlayer = player;
 
@@ -64,8 +72,11 @@ export class Scene{
             switch(this.localPlayer.state){
                 case PlayerState.MATTACK:
                 {
-                    if(!this.localPlayer.anim.isPlaying)
+                    if(!this.localPlayer.anim.isPlaying){
                         this.localPlayer.state = PlayerState.IDLE;
+
+                        this.attackEnemiesCone(this.localPlayer.pos[0], this.localPlayer.pos[2], SLASH_SQ_RADIUS, this.lookX, this.lookY, SLASH_FOV, 1);
+                    }
                     break;
                 }
 
@@ -85,12 +96,17 @@ export class Scene{
                             velX *= w;
                             velY *= w;
 
+                            this.lookX = velX
+                            this.lookY = velY
+
                             this.move(this.localPlayer, dT * velX * PLAYER_SPEED, -dT * velY * PLAYER_SPEED, PLAYER_RADIUS);
 
                             const angle = Math.atan2(velY, velX) + 1.5707963267948966;
                             quat.setAxisAngle(this.localPlayer.rot, VEC3_UP, angle);
                             quat.slerp(this.localPlayer.rRot, this.localPlayer.rRot, this.localPlayer.rot, PLAYER_SLERP_SPEED);
+
                             this.localPlayer.state = PlayerState.RUNNING;
+
                             this.cameraToPlayer(this.localPlayer);
                         }else{
                             this.localPlayer.state = PlayerState.IDLE;
@@ -171,10 +187,12 @@ export class Scene{
         //clip against actors
         i = this.actors.length;
         while(i--){
-            if(this.actors[i] === actor)
+            //Ignore dead things and self
+            const actor2 = this.actors[i]
+            if(actor2.state == 2 || actor2 === actor)
                 continue;
                 
-            const p2 = this.actors[i].pos
+            const p2 = actor2.pos
             if(sqDist(pos[0], pos[2] + dy, p2[0], p2[2]) < ACTOR_SQ_RADIUS){
                 dx = pos[0] - p2[0], dy = pos[2] - p2[2]
                 const w = PLAYER_RADIUS/Math.sqrt(dx*dx+dy*dy)
@@ -222,7 +240,26 @@ export class Scene{
         return true;
     }
 
-    findPath(sx,sy,tx,ty){
-  
+    attackEnemiesCone(x,y,sqr,dirX,dirY,fov,amt){
+        let i = this.actors.length
+        while(i--){
+            const act = this.actors[i]
+            
+            let dx = act.pos[0] - x,
+                dy = act.pos[2] - y,
+                d = dx*dx+dy*dy;
+            
+            if(d <= PLAYER_RADIUS + sqr){
+                const w = 1/Math.sqrt(d)
+                dx *= w
+                dy *= w
+
+                const dot = dx*dirX+dy*dirY;
+                if(dot >= fov){
+                    act.damage(amt)
+                }
+                console.log('dot', dx,dy, dirX,dirY, dot)
+            }
+        }
     }
 }
