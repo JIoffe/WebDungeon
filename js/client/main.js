@@ -18,8 +18,11 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
     window.whereAmI = () => {
         console.log(scene.localPlayer.pos, scene.localPlayer.rot);
     }
-    window.printLights = () => {
 
+    window.agroEveryone = () => {
+        scene.actors.forEach(a => {
+            a.state = 1;
+        });
     }
 
     d.addEventListener('DOMContentLoaded', async () => {

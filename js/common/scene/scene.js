@@ -4,15 +4,15 @@ import { Animations } from "../rendering/animation";
 import { Input } from "../input/input";
 import { Camera } from "../camera";
 import { vec3, quat } from "gl-matrix";
-import { VEC3_TEMP, RadToDeg, DegToRad, sqDist2D, sqDist } from "../math";
+import { RadToDeg, DegToRad, sqDist2D, sqDist } from "../math";
 import { PlayerState } from "./player-state";
 import { ARM_PLAYER } from "../constants/armatures";
 import { ActorFactory } from "../actors/actor-factory";
 
 const PLAYER_SPEED = 0.04;
 const PLAYER_SLERP_SPEED = 0.3;
-const PLAYER_RADIUS = 8;
-const ACTOR_SQ_RADIUS = PLAYER_RADIUS*PLAYER_RADIUS;
+export const PLAYER_RADIUS = 8;
+export const ACTOR_SQ_RADIUS = PLAYER_RADIUS*PLAYER_RADIUS;
 
 const cameraOffset = vec3.fromValues(0, 100, 60);
 const VEC3_UP = new Float32Array([0,1,0]);
@@ -85,7 +85,7 @@ export class Scene{
                             velX *= w;
                             velY *= w;
 
-                            this.move(this.localPlayer.pos, dT * velX * PLAYER_SPEED, -dT * velY * PLAYER_SPEED, PLAYER_RADIUS);
+                            this.move(this.localPlayer, dT * velX * PLAYER_SPEED, -dT * velY * PLAYER_SPEED, PLAYER_RADIUS);
 
                             const angle = Math.atan2(velY, velX) + 1.5707963267948966;
                             quat.setAxisAngle(this.localPlayer.rot, VEC3_UP, angle);
@@ -141,10 +141,12 @@ export class Scene{
      * @param {number} dy - delta y (horizontal plane)
      * @param {number} r - collision radius
      */
-    move(pos,dx,dy,r){
+    move(actor,dx,dy,r){
         //Attempts to update position with desired delta, while responding to environment
         //let a,b,c be scan points
         //Check Y and X axes separately
+        const pos = actor.pos
+
         let a = (pos[0] - r) >> 5,
             b = (pos[0] + r) >> 5,
             c = (pos[2] + dy + (dy > 0 ? r : -r)) >> 5
@@ -169,6 +171,9 @@ export class Scene{
         //clip against actors
         i = this.actors.length;
         while(i--){
+            if(this.actors[i] === actor)
+                continue;
+                
             const p2 = this.actors[i].pos
             if(sqDist(pos[0], pos[2] + dy, p2[0], p2[2]) < ACTOR_SQ_RADIUS){
                 dx = pos[0] - p2[0], dy = pos[2] - p2[2]
@@ -178,16 +183,6 @@ export class Scene{
                 break;
             }         
         }
-    }
-
-    /**
-     * Scans for a hit against the level grid against a circle at x,y with radius r
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} r 
-     */
-    scanGrid(x,y,r){
-
     }
 
     cameraToPlayer(player){
