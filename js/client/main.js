@@ -1,12 +1,10 @@
 import { vec3, quat, mat4 } from "gl-matrix"
 import { Renderer } from "../common/renderer";
-import { Assets, coreAssetList } from "../common/io/assets";
+import { coreAssetList } from "../common/io/assets";
 import { Scene } from "../common/scene/scene";
 import { MessageBus } from "../common/messaging/message-bus";
 import { MessageType } from "../common/messaging/message-type";
 import { RestClient } from "../common/http/rest-client";
-import { Animations } from "../common/rendering/animation";
-import { DegToRad } from "../common/math";
 import { COLOR_FLAME_TORCH } from "../common/constants/colors";
 
 (function(d){

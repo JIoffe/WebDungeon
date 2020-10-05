@@ -45,13 +45,14 @@ class AnimationController{
      * @param {number} delta delta time in MS
      */
     play(delta){
-        if(this.frame === this.anim.maxFrame)
+        if(!this.isPlaying)
             return this.tween;
         
         this.frame += delta * this.speed;
         if(this.frame >= this.anim.maxFrame){
             this.isPlaying = false;
-            this.tween[0] = this.anim.maxFrame + this.anim.rowOffset;
+            this.frame = this.anim.maxFrame           
+            this.tween[0] = this.anim.keyframes.length - 1 + this.anim.rowOffset
             this.tween[1] = this.tween[0];
             this.tween[2] = 0;
             return this.tween;
@@ -93,7 +94,7 @@ class AnimationSingleton{
                 armature.animations.forEach(anim => {
                     animations[anim.name] = {
                         keyframes: anim.keyframes.map(kf => kf - 1),
-                        maxFrame: anim.keyframes.reduce((p, c) => Math.max(p, c), 0),
+                        maxFrame: anim.keyframes.reduce((p, c) => Math.max(p, c - 1), 0),
                         rowOffset: rowOffset
                     }
 

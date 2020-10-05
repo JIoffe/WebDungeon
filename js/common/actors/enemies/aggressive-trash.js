@@ -50,7 +50,7 @@ export class AggressiveTrash extends BaseActor{
                 const target = scene.localPlayer;
                 const d = sqDist2D(this.pos, target.pos);
                 if(d <= ATTACK_DIST){
-                    this.state = 0;
+                    this.state = 2;
                     break;
                 }
 
@@ -67,9 +67,6 @@ export class AggressiveTrash extends BaseActor{
                 dY *= w;
 
                 scene.move(this, dX, dY, PLAYER_RADIUS);
-
-                //this.pos[0] += dX;
-                //this.pos[2] += dY;
                 break;
             }
             default:
@@ -81,6 +78,9 @@ export class AggressiveTrash extends BaseActor{
                 case 1:
                     this.anim.set('Walk', 0.06);
                     break;
+                case 2:
+                    this.anim.set('Death', 0.02);
+                    break;
                 case 0:
                 default:
                     this.anim.set('Idle', 0.02);
@@ -91,6 +91,9 @@ export class AggressiveTrash extends BaseActor{
 
         //Loop or one shot animation as appropriate
         switch(this.state){
+            case 2:
+                this.anim.play(dT);
+                break;
             default:
                 this.anim.loop(dT);
                 break;

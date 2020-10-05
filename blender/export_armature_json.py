@@ -141,6 +141,8 @@ class ExportArmatureJSON(Operator, ExportHelper):
                             kf_delta -= self.keyframe_resolution
 
                         animationExport.keyframes.append(kf) 
+                        
+            animationExport.keyframes.sort()
 
             # Gather data at each keyframe
             for frame in animationExport.keyframes:                    

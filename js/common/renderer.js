@@ -1,4 +1,4 @@
-import {mat4, vec3, quat, mat3, vec2} from 'gl-matrix'
+import { mat4, vec3, quat } from 'gl-matrix'
 import { WebGLResourceManager } from './rendering/resource-management';
 import { VERTEX_STRIDE_ACTORS, VERTEX_STRIDE_STATIC } from './rendering/mesh/mesh-constants';
 
@@ -38,6 +38,9 @@ var pvs = new Array(MAX_TO_RENDER);
 
 //The size of the entire shadowmap atlas
 const SHADOWMAP_SIZE = 512;
+
+//PARTICLE SYSTEMs
+const MAX_PARTICLES = 256;
 
 //Variables we will use
 let i = 0;
