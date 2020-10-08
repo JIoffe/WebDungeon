@@ -47,6 +47,9 @@ export class WebGLResourceManager{
 
         //Shadows - skinned
         this.shaders.push(new ShaderProgram(gl, VertexShaders.skinnedmesh_shadow, FragmentShaders.white));
+
+        //Particle effects
+        this.shaders.push(new ShaderProgram(gl, VertexShaders.particle, FragmentShaders.textured));
     }
 
     onPlayerAdded(data){

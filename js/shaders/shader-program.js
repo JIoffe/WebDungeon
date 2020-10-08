@@ -4,13 +4,16 @@ export const Attributes = {
     Norm: 'aNormal',
     Tangent: 'aTangent',
     Groups: 'aGroups',
-    Weights: 'aWeights'
+    Weights: 'aWeights',
+
+    Index: 'aIndex', //Index of vertex or element, eg. for particles
 
     //For 'thick' line segment drawing
     
 };
 
 export const Uniforms = {
+    ratio: 'uRatio', //SCREEN RATIO X:Y 
     matMVP: 'uModelViewProj',
     matProj: 'uProjection',
     matView: 'uView',
@@ -54,7 +57,22 @@ export const Uniforms = {
 
     //For post process pipeline
     pipe: 'uPipe',
-    forwardPass: 'uForwardPass'
+    forwardPass: 'uForwardPass',
+
+    //MAINLY FOR PARTICLES
+    startTime: 'uStartTime',
+    direction: 'uDirection',
+    emissionRate: 'uEmissionRate',
+    gravity: 'uGravity',
+    minPower: 'uMinPower',
+    maxPower: 'uMaxPower',
+    spread: 'uSpread',
+
+    startSize: 'uStartSize',
+    endSize: 'uEndSize',
+
+    minLifetime: 'uMinLifetime',
+    maxLifetime: 'uMaxLifetime'
 };
 
 /*
@@ -73,6 +91,9 @@ export class ShaderProgram{
 
         this.uniformLocations = {};
         Object.keys(Uniforms).forEach(k => this.uniformLocations[k] = gl.getUniformLocation(program, Uniforms[k]));
+
+        //Key uniform points for particle shaders
+        this.uniformLocations.particles = gl.getUniformLocation(program, 'startTime');
     }
 
     get isReady(){

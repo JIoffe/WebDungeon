@@ -1,5 +1,8 @@
+import { vec3 } from "gl-matrix";
 import { ARM_CRABBY } from "../../constants/armatures";
 import { sqDist2D } from "../../math";
+import { MessageBus } from "../../messaging/message-bus";
+import { MessageType } from "../../messaging/message-type";
 import { Animations } from "../../rendering/animation";
 import { PLAYER_RADIUS } from "../../scene/scene";
 import { BaseActor } from "../base-actor";
@@ -113,7 +116,17 @@ export class AggressiveTrash extends BaseActor{
         }
     }
 
-    damage(amt){
+    damage(amt, dx, dy){
+        //Compute Blood splatter direction
+        const bloodDir = vec3.fromValues(dx, 0.5, dy)
+        vec3.normalize(bloodDir, bloodDir)
+
+        MessageBus.post(MessageType.PARTICLESYSTEM_ADDED, {
+            type: 'blood0',
+            pos: this.pos,
+            dir: bloodDir
+        })
+
         this.hp -= amt;
         if(this.hp <= 0 ){
             this.hp = 0

@@ -17,3 +17,10 @@ export const VERTEX_WEIGHT_AFFECTORS = 4;
 //             2 * 2 Bytes for TEXCOORDS (24)
 //             3 * 1 byte for NORMAL (27)
 //             1 byte PADDING (28)
+
+//Particles only have X and Y position stored since they are billboards
+//Only really needs +1/-1 so a byte is sufficient
+export const VERTEX_STRIDE_PARTICLES = 4;
+//PARTICLE DATA - 8 BYTES
+//Interleaved: 2 * 1 bytes for POSITION (2)
+//             1 * 2 bytes for PARTICLE INDEX (2) => 4

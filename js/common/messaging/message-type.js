@@ -4,6 +4,7 @@ export const MessageType = {
     PLAYER_ADDED: 0,
     ASSET_DOWNLOADED: 0,
     ACTOR_ADDED: 0,
+    PARTICLESYSTEM_ADDED: 0,
 
     //INPUT
     MOVE_LEFT: 0,

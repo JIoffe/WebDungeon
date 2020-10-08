@@ -41,7 +41,7 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
             state: 0,
             prevState: 0,
             skin: 'human0',
-            pos: vec3.fromValues(180,0,60),
+            pos: vec3.fromValues(180,0,80),
             rot: quat.create(),
             rRot: quat.create() //RENDER ROTATION
         })

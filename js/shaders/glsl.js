@@ -150,6 +150,83 @@ export const VertexShaders = {
         gl_Position = ${Uniforms.matMVP} * mix(deform0, deform1, ${Uniforms.keyframes}.z);
     }
     `,
+
+    particle:
+    `#version 300 es
+    const float maxParticles = 64.0;
+
+    in vec2 ${Attributes.Pos};
+    in vec2 ${Attributes.Tex};
+    in float ${Attributes.Index};
+
+    uniform float ${Uniforms.ratio};
+    uniform float ${Uniforms.time};
+    uniform mat4 ${Uniforms.matMVP};
+
+    //Particle-specific uniforms
+    uniform float ${Uniforms.startTime};
+    uniform vec3 ${Uniforms.direction};
+
+    uniform float ${Uniforms.emissionRate};
+
+    uniform float ${Uniforms.gravity};
+    uniform float ${Uniforms.minPower};
+    uniform float ${Uniforms.maxPower};
+    uniform float ${Uniforms.spread};
+
+    uniform float ${Uniforms.startSize};
+    uniform float ${Uniforms.endSize};
+
+    uniform float ${Uniforms.minLifetime};
+    uniform float ${Uniforms.maxLifetime};
+
+    out vec2 vTexCoords;
+    
+    void main(){
+        float i = ${Attributes.Index};
+
+        //Time elapsed for the lifetime of the system (scaled to maximum time possible)
+        float cycleTime = (maxParticles + i) * ${Uniforms.emissionRate};
+        float elapsedTime = ${Uniforms.time} - ${Uniforms.startTime};//mod(${Uniforms.time} - ${Uniforms.startTime}, step(1., cycleTime));
+
+        float particleEmissionTime = i * ${Uniforms.emissionRate};
+        if(elapsedTime < particleEmissionTime){
+            gl_Position = vec4(0,0,0,0);
+            return;
+        }        
+
+        //Delta time for this particular particle
+        float dT = elapsedTime - particleEmissionTime;
+
+        float s = abs(sin(i));
+        float lifetime = mix(${Uniforms.minLifetime}, ${Uniforms.maxLifetime}, s);
+        float life = clamp(dT/lifetime, 0., 1.);
+        if(life >= 1.){
+            gl_Position = vec4(0,0,0,0);
+            return;            
+        }
+
+        vec4 pos = vec4(0,0,0,1);
+        vec3 particleDirection = ${Uniforms.direction};
+        particleDirection.x += sin(i) * ${Uniforms.spread};
+        particleDirection.y += cos(i - 1.) * ${Uniforms.spread};
+        particleDirection.z += sin(i - 3.) * ${Uniforms.spread};
+
+        float power = mix(${Uniforms.minPower}, ${Uniforms.maxPower}, s);
+        pos.xyz += normalize(particleDirection) * power * dT;
+        pos.y -= ${Uniforms.gravity}*dT*dT;
+
+
+        //Project to screen and expect to quad
+        float scale = mix(${Uniforms.startSize}, ${Uniforms.endSize}, life);
+        gl_Position = ${Uniforms.matMVP} * pos;
+        gl_Position.x += ${Attributes.Pos}.x * scale;
+        gl_Position.y += ${Attributes.Pos}.y * ${Uniforms.ratio} * scale;
+
+        vTexCoords.x = max(${Attributes.Pos}.x, 0.);
+        vTexCoords.y = max(${Attributes.Pos}.y, 0.);
+    }
+    `,
 }
 
 export const FragmentShaders = {
@@ -181,12 +258,11 @@ export const FragmentShaders = {
     precision mediump float;
     
     uniform sampler2D ${Uniforms.diffuse};
-    //in vec2 texCoords;
+    in vec2 vTexCoords;
     out vec4 color;
     
     void main() {
-        //color = texture(${Uniforms.diffuse}, texCoords);
-        color = vec4(1,1,1,1);
+        color = texture(${Uniforms.diffuse}, vTexCoords);
     }
     `,
 

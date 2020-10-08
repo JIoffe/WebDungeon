@@ -1,6 +1,7 @@
 import { mat4, vec3, quat } from 'gl-matrix'
 import { WebGLResourceManager } from './rendering/resource-management';
-import { VERTEX_STRIDE_ACTORS, VERTEX_STRIDE_STATIC } from './rendering/mesh/mesh-constants';
+import { VERTEX_STRIDE_ACTORS, VERTEX_STRIDE_PARTICLES, VERTEX_STRIDE_STATIC } from './rendering/mesh/mesh-constants';
+import { makeParticleBuffer, ParticleDefs } from './rendering/particles';
 
 
 var gl = null;
@@ -40,7 +41,10 @@ var pvs = new Array(MAX_TO_RENDER);
 const SHADOWMAP_SIZE = 512;
 
 //PARTICLE SYSTEMs
-const MAX_PARTICLES = 256;
+const MAX_PARTICLES = 64;
+const PARTICLE_EL_CNT = MAX_PARTICLES * 6;
+
+var particleBuffers;
 
 //Variables we will use
 let i = 0;
@@ -70,6 +74,7 @@ export class Renderer{
 
         //Create shadow framebuffer
         this.shadowFBO = this.createDepthFBO(SHADOWMAP_SIZE);
+        particleBuffers = makeParticleBuffer(gl, MAX_PARTICLES);
     }
 
     render(scene, camera, time, dT){
@@ -78,7 +83,8 @@ export class Renderer{
         //This causes a small performance hit but is always correct.
         const rect = this.canvas.getBoundingClientRect(),
               w    = rect.right - rect.left,
-              h    = rect.bottom - rect.top;
+              h    = rect.bottom - rect.top,
+              ratio = w/h;
 
         const shaders = this.resources.shaders;
         let shader;
@@ -371,6 +377,47 @@ export class Renderer{
                 }
             }
         }
+
+        //////////////////////////////////////////////////////////
+        // PARTICLE EFFECTS
+        //////////////////////////////////////////////////////////
+        shader = shaders[3];
+        gl.depthMask(false);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+        gl.useProgram(shader.program);
+        gl.uniform1f(shader.uniformLocations.time, time);
+        gl.uniform1f(shader.uniformLocations.ratio, ratio);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.uniform1i(shader.uniformLocations.diffuse, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, particleBuffers[0]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffers[1]);
+        gl.vertexAttribPointer(0, 2, gl.BYTE, false, VERTEX_STRIDE_PARTICLES, 0);           //POS
+        gl.vertexAttribPointer(2, 1, gl.UNSIGNED_SHORT, false, VERTEX_STRIDE_PARTICLES, 2); // PARTICLE INDEX
+
+        this.updateShaderParticleDef(shader, ParticleDefs.blood0);
+        i = scene.effects.length;
+        while(i--){
+            const ps = scene.effects[i];
+            if(time - ps.startTime >= ParticleDefs.blood0.lifetime){
+                scene.effects.splice(i, 1);
+                continue;
+            }
+
+            mat4.fromTranslation(matMVP, ps.pos)
+            mat4.multiply(matMVP, matVP, matMVP)
+            gl.uniform3fv(shader.uniformLocations.direction, ps.dir);
+            gl.uniform1f(shader.uniformLocations.startTime, ps.startTime);
+            gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matMVP)
+    
+            gl.drawElements(gl.TRIANGLES, PARTICLE_EL_CNT, gl.UNSIGNED_SHORT, 0)
+        }
+
+        gl.depthMask(true);
+        gl.disable(gl.BLEND);
     }
 
     drawMesh(m){
@@ -439,6 +486,24 @@ export class Renderer{
             gl.activeTexture(gl.TEXTURE2);
             gl.bindTexture(gl.TEXTURE_2D, arm);
             gl.uniform1i(shader.uniformLocations.boneTex, 2);
+        }
+    }
+
+    updateShaderParticleDef(shader, emitter){
+        const ul = shader.uniformLocations
+        gl.uniform1f(ul.emissionRate, emitter.emissionRate)
+        gl.uniform1f(ul.gravity, emitter.gravity)
+        gl.uniform1f(ul.minPower, emitter.minPower)
+        gl.uniform1f(ul.maxPower, emitter.maxPower)
+        gl.uniform1f(ul.spread, emitter.spread)
+        gl.uniform1f(ul.startSize, emitter.startSize)
+        gl.uniform1f(ul.endSize, emitter.endSize)
+        gl.uniform1f(ul.minLifetime, emitter.minLifetime)
+        gl.uniform1f(ul.maxLifetime, emitter.maxLifetime)
+
+        const mat = this.resources.materials[emitter.mat];
+        if(!!mat){
+            gl.bindTexture(gl.TEXTURE_2D, mat.diffuse);
         }
     }
 }

@@ -10,5 +10,5 @@ export class BaseActor{
     }
 
     update(scene, time, dT){ }
-    damage(amt){ }
+    damage(amt, dx, dy){ }
 }

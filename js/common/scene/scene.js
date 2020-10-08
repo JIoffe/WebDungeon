@@ -16,9 +16,9 @@ export const ACTOR_SQ_RADIUS = PLAYER_RADIUS*PLAYER_RADIUS;
 
 const SLASH_RADIUS = 16;
 const SLASH_SQ_RADIUS = SLASH_RADIUS*SLASH_RADIUS;
-const SLASH_FOV = 0.8;
+const SLASH_FOV = 0.7;
 
-const cameraOffset = vec3.fromValues(0, 100, 60);
+const cameraOffset = vec3.fromValues(0, 100, 30);
 const VEC3_UP = new Float32Array([0,1,0]);
 
 export class Scene{
@@ -29,9 +29,13 @@ export class Scene{
 
         this.localPlayer = null;
         this.mainCamera = new Camera();
+        this.time = 0;
+
+        this.effects = [];
 
         MessageBus.subscribe(MessageType.PLAYER_ADDED, data => this.onPlayerAdded(data))
         MessageBus.subscribe(MessageType.ACTOR_ADDED, data => this.onActorAdded(data));
+        MessageBus.subscribe(MessageType.PARTICLESYSTEM_ADDED, data => this.onParticleSystemAdded(data));
     }
 
     /* 
@@ -67,15 +71,27 @@ export class Scene{
         console.log(`Added ${data.length} actor(s)`);
     }
 
+    onParticleSystemAdded(data){
+        if(!data)
+            return;
+
+        data.startTime = this.time;
+        this.effects.push(data);
+    }
+
     update(time, dT){
+        this.time = time;
         if(!!this.localPlayer){
             switch(this.localPlayer.state){
                 case PlayerState.MATTACK:
                 {
                     if(!this.localPlayer.anim.isPlaying){
                         this.localPlayer.state = PlayerState.IDLE;
-
-                        this.attackEnemiesCone(this.localPlayer.pos[0], this.localPlayer.pos[2], SLASH_SQ_RADIUS, this.lookX, this.lookY, SLASH_FOV, 1);
+                    }else{
+                        if(!this.localPlayer.didAttack && this.localPlayer.anim.frame >= 10){
+                            this.attackEnemiesCone(this.localPlayer.pos[0], this.localPlayer.pos[2], SLASH_SQ_RADIUS, this.lookX, this.lookY, SLASH_FOV, 1);
+                            this.localPlayer.didAttack = true;
+                        }
                     }
                     break;
                 }
@@ -86,9 +102,10 @@ export class Scene{
                 {
                     if(Input.state[4]){
                         this.localPlayer.state = PlayerState.MATTACK;
+                        this.localPlayer.didAttack = false;
                     }else{
                         let velX = Input.axisH,
-                            velY = Input.axisV;
+                            velY = -Input.axisV;
             
                         if(!!velX || !!velY){
                             //Normalize
@@ -99,9 +116,9 @@ export class Scene{
                             this.lookX = velX
                             this.lookY = velY
 
-                            this.move(this.localPlayer, dT * velX * PLAYER_SPEED, -dT * velY * PLAYER_SPEED, PLAYER_RADIUS);
+                            this.move(this.localPlayer, dT * velX * PLAYER_SPEED, dT * velY * PLAYER_SPEED, PLAYER_RADIUS);
 
-                            const angle = Math.atan2(velY, velX) + 1.5707963267948966;
+                            const angle = Math.atan2(-velY, velX) + 1.5707963267948966;
                             quat.setAxisAngle(this.localPlayer.rot, VEC3_UP, angle);
                             quat.slerp(this.localPlayer.rRot, this.localPlayer.rRot, this.localPlayer.rot, PLAYER_SLERP_SPEED);
 
@@ -249,16 +266,16 @@ export class Scene{
                 dy = act.pos[2] - y,
                 d = dx*dx+dy*dy;
             
-            if(d <= PLAYER_RADIUS + sqr){
+            if(d <= ACTOR_SQ_RADIUS + sqr){
                 const w = 1/Math.sqrt(d)
                 dx *= w
                 dy *= w
 
                 const dot = dx*dirX+dy*dirY;
+                console.log(`DIRECTION OF ATTACK: ${dirX}, ${dirY} ... actual direction ${dx}, ${dy}`);
                 if(dot >= fov){
-                    act.damage(amt)
+                    act.damage(amt, dirX, dirY)
                 }
-                console.log('dot', dx,dy, dirX,dirY, dot)
             }
         }
     }
