@@ -41,7 +41,7 @@ var pvs = new Array(MAX_TO_RENDER);
 const SHADOWMAP_SIZE = 512;
 
 //PARTICLE SYSTEMs
-const MAX_PARTICLES = 64;
+const MAX_PARTICLES = 128;
 const PARTICLE_EL_CNT = MAX_PARTICLES * 6;
 
 var particleBuffers;
@@ -390,6 +390,10 @@ export class Renderer{
         gl.uniform1f(shader.uniformLocations.time, time);
         gl.uniform1f(shader.uniformLocations.ratio, ratio);
 
+        gl.activeTexture(gl.TEXTURE1);
+        gl.uniform1i(shader.uniformLocations.noise, 1);
+        gl.bindTexture(gl.TEXTURE_2D, this.resources.noiseTex);
+
         gl.activeTexture(gl.TEXTURE0);
         gl.uniform1i(shader.uniformLocations.diffuse, 0);
 
@@ -398,13 +402,21 @@ export class Renderer{
         gl.vertexAttribPointer(0, 2, gl.BYTE, false, VERTEX_STRIDE_PARTICLES, 0);           //POS
         gl.vertexAttribPointer(2, 1, gl.UNSIGNED_SHORT, false, VERTEX_STRIDE_PARTICLES, 2); // PARTICLE INDEX
 
-        this.updateShaderParticleDef(shader, ParticleDefs.blood0);
+        
         i = scene.effects.length;
         while(i--){
-            const ps = scene.effects[i];
-            if(time - ps.startTime >= ParticleDefs.blood0.lifetime){
+            const ps = scene.effects[i],
+                type = ps.type,
+                psLife = ParticleDefs[type].lifetime;
+
+            if(psLife > 0 && time - ps.startTime >= ParticleDefs[type].lifetime){
                 scene.effects.splice(i, 1);
                 continue;
+            }
+
+            if(prevType !== type){
+                this.updateShaderParticleDef(shader, ParticleDefs[type]);
+                prevType = type;
             }
 
             mat4.fromTranslation(matMVP, ps.pos)

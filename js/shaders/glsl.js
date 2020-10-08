@@ -153,11 +153,13 @@ export const VertexShaders = {
 
     particle:
     `#version 300 es
-    const float maxParticles = 64.0;
+    const float maxParticles = 128.0;
 
     in vec2 ${Attributes.Pos};
     in vec2 ${Attributes.Tex};
     in float ${Attributes.Index};
+
+    uniform sampler2D ${Uniforms.noise};
 
     uniform float ${Uniforms.ratio};
     uniform float ${Uniforms.time};
@@ -198,7 +200,9 @@ export const VertexShaders = {
         //Delta time for this particular particle
         float dT = elapsedTime - particleEmissionTime;
 
-        float s = abs(sin(i));
+        //Pull from noise ramp
+        float s = texelFetch(${Uniforms.noise}, ivec2(int(i), 0), 0).r;
+
         float lifetime = mix(${Uniforms.minLifetime}, ${Uniforms.maxLifetime}, s);
         float life = clamp(dT/lifetime, 0., 1.);
         if(life >= 1.){
@@ -208,10 +212,11 @@ export const VertexShaders = {
 
         vec4 pos = vec4(0,0,0,1);
         vec3 particleDirection = ${Uniforms.direction};
-        particleDirection.x += sin(i) * ${Uniforms.spread};
-        particleDirection.y += cos(i - 1.) * ${Uniforms.spread};
-        particleDirection.z += sin(i - 3.) * ${Uniforms.spread};
+        particleDirection.x += (texelFetch(${Uniforms.noise}, ivec2(int(i), 2), 0).r * 2. - 1.) * ${Uniforms.spread};
+        particleDirection.y += (texelFetch(${Uniforms.noise}, ivec2(int(i), 4), 0).r * 2. - 1.) * ${Uniforms.spread};
+        particleDirection.z += (texelFetch(${Uniforms.noise}, ivec2(int(i), 8), 0).r * 2. - 1.) * ${Uniforms.spread};
 
+        s = texelFetch(${Uniforms.noise}, ivec2(int(i), 16), 0).r;
         float power = mix(${Uniforms.minPower}, ${Uniforms.maxPower}, s);
         pos.xyz += normalize(particleDirection) * power * dT;
         pos.y -= ${Uniforms.gravity}*dT*dT;

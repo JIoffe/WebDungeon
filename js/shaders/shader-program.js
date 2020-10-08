@@ -55,6 +55,8 @@ export const Uniforms = {
     //Image properties:
     aspect: 'uAspect',
 
+    noise: 'uNoise',
+
     //For post process pipeline
     pipe: 'uPipe',
     forwardPass: 'uForwardPass',

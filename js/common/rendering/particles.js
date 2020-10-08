@@ -46,18 +46,18 @@ export const ParticleDefs = {
     blood0: {
         mat: 'blood0',
         gravity: 0.00002,
-        minPower: 0.04,
-        maxPower: 0.08,
+        minPower: 0.03,
+        maxPower: 0.06,
 
         startSize: 4,
         endSize: 0,
 
-        minLifetime: 200.0,
-        maxLifetime: 400.0,
+        minLifetime: 300.0,
+        maxLifetime: 700.0,
 
         emissionRate: 0, //One Shot 
-        spread: 0.15,
+        spread: 0.25,
 
-        lifetime: 400
+        lifetime: 700
     }
 }

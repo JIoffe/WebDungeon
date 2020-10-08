@@ -272,7 +272,6 @@ export class Scene{
                 dy *= w
 
                 const dot = dx*dirX+dy*dirY;
-                console.log(`DIRECTION OF ATTACK: ${dirX}, ${dirY} ... actual direction ${dx}, ${dy}`);
                 if(dot >= fov){
                     act.damage(amt, dirX, dirY)
                 }

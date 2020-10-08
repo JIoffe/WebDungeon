@@ -22,6 +22,47 @@ export class Textures{
         return texture;
     }
 
+    static makeSomeNoise(gl, width){
+        const canvas = document.createElement('canvas');
+        canvas.setAttribute('width', '' + width);
+        canvas.setAttribute('height', '' + width);
+
+        const ctx = canvas.getContext('2d');
+
+        const imgData = ctx.createImageData(width, width);
+        for(let x = 0; x < width; ++x){
+            for(let y = 0; y < width; ++y){
+                let i = (x + y * width)*4;
+
+                let noise = x*11.11356604 + y * 12.1898505
+                noise = noise - Math.floor(noise)
+
+                noise *= Math.pow(x+y, 2);
+                noise = noise - Math.floor(noise);
+
+                imgData.data[i] = noise * 255;
+                imgData.data[i+1] = noise * 255;
+                imgData.data[i+2] = noise * 255;
+                imgData.data[i+3] = 255;
+            }
+        }
+        ctx.putImageData(imgData, 0, 0);
+
+        var texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);   
+        
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, width, width, 0, gl.RED, gl.UNSIGNED_BYTE, canvas);
+
+        canvas.remove();
+
+        return texture;
+    }
+
     static reserveRenderTargetTexture(gl){
         var texture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, texture);

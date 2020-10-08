@@ -31,6 +31,8 @@ export class WebGLResourceManager{
 
         this.armatures = {};
 
+        this.noiseTex = null;
+
         MessageBus.subscribe(MessageType.PLAYER_ADDED, data => this.onPlayerAdded(data))
         MessageBus.subscribe(MessageType.ASSET_DOWNLOADED, asset => this.onAssetLoaded(asset));
         MessageBus.subscribe(MessageType.ACTOR_ADDED, data => this.onActorAdded(data));
@@ -50,6 +52,8 @@ export class WebGLResourceManager{
 
         //Particle effects
         this.shaders.push(new ShaderProgram(gl, VertexShaders.particle, FragmentShaders.textured));
+
+        this.noiseTex = Textures.makeSomeNoise(gl, 256);
     }
 
     onPlayerAdded(data){
