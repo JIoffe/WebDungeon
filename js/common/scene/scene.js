@@ -322,4 +322,8 @@ export class Scene{
 
         MessageBus.post(MessageType.ACTOR_ADDED, enemies);
     }
+
+    populateTorches(){
+        
+    }
 }

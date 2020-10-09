@@ -61,6 +61,9 @@ export const VertexShaders = {
         int row = int(${Uniforms.keyframes}.x);
         mat4 m;
         for(int i = 0; i < 4; ++i){
+            if(weights[i] < 0.001)
+                continue;
+
             int boneX = int(${Attributes.Groups}[i]) << 2;
 
             m[0] = texelFetch(${Uniforms.boneTex}, ivec2(boneX, row), 0);
@@ -74,6 +77,9 @@ export const VertexShaders = {
         //Second Keyframe
         row = int(${Uniforms.keyframes}.y);
         for(int i = 0; i < 4; ++i){
+            if(weights[i] < 0.001)
+                continue;
+
             int boneX = int(${Attributes.Groups}[i]) << 2;
 
             m[0] = texelFetch(${Uniforms.boneTex}, ivec2(boneX, row), 0);
@@ -123,6 +129,9 @@ export const VertexShaders = {
         int row = int(${Uniforms.keyframes}.x);
         mat4 m;
         for(int i = 0; i < 4; ++i){
+            if(weights[i] < 0.001)
+                continue;
+
             int boneX = int(${Attributes.Groups}[i]) << 2;
 
             m[0] = texelFetch(${Uniforms.boneTex}, ivec2(boneX, row), 0);
@@ -136,6 +145,9 @@ export const VertexShaders = {
         //Second Keyframe
         row = int(${Uniforms.keyframes}.y);
         for(int i = 0; i < 4; ++i){
+            if(weights[i] < 0.001)
+                continue;
+                
             int boneX = int(${Attributes.Groups}[i]) << 2;
 
             m[0] = texelFetch(${Uniforms.boneTex}, ivec2(boneX, row), 0);
