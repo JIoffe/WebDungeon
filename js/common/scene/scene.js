@@ -69,7 +69,13 @@ export class Scene{
         if(!data)
             return;
 
-        data.forEach(actorDef => this.actors.push(ActorFactory.create(actorDef)));
+        data.forEach(actorDef => {
+            let actor = ActorFactory.create(actorDef);
+            if(!!actorDef.angle)
+                actor.angle = actorDef.angle;
+
+            this.actors.push(actor);
+        });
         console.log(`Added ${data.length} actor(s)`);
     }
 
@@ -286,13 +292,13 @@ export class Scene{
 
         let i = 800;
         while(enemies.length < 50 && !!(i--)){
-            let x = Math.floor(Math.random() * this.level.w),
-                y = Math.floor(Math.random() * this.level.h);
+            let posX = Math.random() * (this.level.w << this.level.spacing),
+                posY = Math.random() * (this.level.h << this.level.spacing);
+
+            let x = Math.floor(posX >> this.level.spacing),
+                y = Math.floor(posY >> this.level.spacing);
 
             if(this.level.tiles[x + y * this.level.w] === 0){
-                let posX = (x << this.level.spacing) + PLAYER_RADIUS,
-                    posY = (y << this.level.spacing) + PLAYER_RADIUS;
-
                 let isValidPosition = true;
                 for(let j = 0; j < enemies.length; ++j){
                     const other = enemies[j];
@@ -307,7 +313,7 @@ export class Scene{
                     enemies.push({
                         type: 'crabby',
                         pos: vec3.fromValues(posX, 0, posY),
-                        angle: 0,
+                        angle: Math.random() * 6,
                         state: 0
                     })
                 }
