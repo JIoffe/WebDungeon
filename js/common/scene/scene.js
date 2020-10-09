@@ -9,6 +9,8 @@ import { PlayerState } from "./player-state";
 import { ARM_PLAYER } from "../constants/armatures";
 import { ActorFactory } from "../actors/actor-factory";
 
+const MAX_ENEMIES = 200;
+
 const PLAYER_SPEED = 0.04;
 const PLAYER_SLERP_SPEED = 0.3;
 export const PLAYER_RADIUS = 8;
@@ -277,5 +279,41 @@ export class Scene{
                 }
             }
         }
+    }
+
+    populateEnemies(){
+        const enemies = [];
+
+        let i = 800;
+        while(enemies.length < 50 && !!(i--)){
+            let x = Math.floor(Math.random() * this.level.w),
+                y = Math.floor(Math.random() * this.level.h);
+
+            if(this.level.tiles[x + y * this.level.w] === 0){
+                let posX = (x << this.level.spacing) + PLAYER_RADIUS,
+                    posY = (y << this.level.spacing) + PLAYER_RADIUS;
+
+                let isValidPosition = true;
+                for(let j = 0; j < enemies.length; ++j){
+                    const other = enemies[j];
+                    const d = sqDist(posX, posY, other.pos[0], other.pos[2]);
+                    if(d < ACTOR_SQ_RADIUS*2){
+                        isValidPosition = false;
+                        break;
+                    }
+                }
+
+                if(isValidPosition){
+                    enemies.push({
+                        type: 'crabby',
+                        pos: vec3.fromValues(posX, 0, posY),
+                        angle: 0,
+                        state: 0
+                    })
+                }
+            }
+        }
+
+        MessageBus.post(MessageType.ACTOR_ADDED, enemies);
     }
 }

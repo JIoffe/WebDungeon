@@ -46,21 +46,6 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
             rRot: quat.create() //RENDER ROTATION
         })
 
-        MessageBus.post(MessageType.ACTOR_ADDED, [
-            {
-                type: 'crabby',
-                pos: vec3.fromValues(9 * 32, 0, 66),
-                angle: 0,
-                state: 0
-            },
-            {
-                type: 'crabby',
-                pos: vec3.fromValues(11 * 32, 0, 86),
-                angle: 0,
-                state: 0
-            }
-        ])
-
         //To mark the tile empty
         const X = -1;
         const A = 10;
@@ -125,6 +110,8 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
                     8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,X,X,X,X,
                     X,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,X,X,X,X]
         }
+
+        scene.populateEnemies();
 
         window.requestAnimationFrame(mainLoop);
     });
