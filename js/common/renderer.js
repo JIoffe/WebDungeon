@@ -409,7 +409,7 @@ export class Renderer{
                 type = ps.type,
                 psLife = ParticleDefs[type].lifetime;
 
-            if(psLife > 0 && time - ps.startTime >= ParticleDefs[type].lifetime){
+            if(psLife > 0 && time - ps.startTime >= psLife){
                 scene.effects.splice(i, 1);
                 continue;
             }

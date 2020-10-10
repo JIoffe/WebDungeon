@@ -200,8 +200,14 @@ export const VertexShaders = {
         float i = ${Attributes.Index};
 
         //Time elapsed for the lifetime of the system (scaled to maximum time possible)
-        float cycleTime = (maxParticles + i) * ${Uniforms.emissionRate};
-        float elapsedTime = ${Uniforms.time} - ${Uniforms.startTime};//mod(${Uniforms.time} - ${Uniforms.startTime}, step(1., cycleTime));
+        float elapsedTime;
+        if(${Uniforms.emissionRate} > 0.1){
+            float cycleTime = (maxParticles + i) * ${Uniforms.emissionRate};
+            elapsedTime = mod(${Uniforms.time} - ${Uniforms.startTime}, cycleTime);
+        }else{
+            elapsedTime = ${Uniforms.time} - ${Uniforms.startTime};
+        }
+
 
         float particleEmissionTime = i * ${Uniforms.emissionRate};
         if(elapsedTime < particleEmissionTime){

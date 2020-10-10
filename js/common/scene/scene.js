@@ -8,6 +8,7 @@ import { RadToDeg, DegToRad, sqDist2D, sqDist } from "../math";
 import { PlayerState } from "./player-state";
 import { ARM_PLAYER } from "../constants/armatures";
 import { ActorFactory } from "../actors/actor-factory";
+import { COLOR_FLAME_TORCH } from "../constants/colors";
 
 const MAX_ENEMIES = 200;
 
@@ -324,6 +325,82 @@ export class Scene{
     }
 
     populateTorches(){
+        //Torches are placed inbetween wall tiles, on the posts
+        for(let x = 1; x < this.level.w - 1; ++x){
+            for(let y = 1; y < this.level.h - 1; ++y){
+                let i = x + y * this.level.w;
+                if(this.level.tiles[i] !== 0)
+                    continue;
+
+                const wallLeft = this.level.tiles[i - 1] > 0 && this.level.tiles[i - this.level.w - 1] > 0,
+                    wallRight = this.level.tiles[i + 1] > 0 && this.level.tiles[i - this.level.w + 1] > 0,
+                    wallUp = this.level.tiles[i - this.level.w] > 0 && this.level.tiles[i - this.level.w - 1] > 0,
+                    wallDown = this.level.tiles[i + this.level.w] > 0 && this.level.tiles[i + this.level.w - 1] > 0;
+                
+                if(!(wallLeft || wallRight || wallUp || wallDown))
+                    continue;
+
+                if(Math.random() > 0.5)
+                    continue;
+
+                
+                //Determine position
+                let posX = (x << 5),
+                    posY = (y << 5);
+
+                let nearLights = 0;
+                let n = this.level.fixedLights.length;
+                while(n-- && nearLights < 2){
+                    const d = sqDist(posX, posY, this.level.fixedLights[n].pos[0], this.level.fixedLights[n].pos[2]);
+                    if(d <= 7200){
+                        nearLights++;
+                    }
+                }
+
+                if(nearLights >= 2)
+                    continue;
+
+                const pos = vec3.fromValues(posX, 30, posY);
+                this.onParticleSystemAdded(
+                {
+                    type: 'torchfire0',
+                    pos: pos,
+                    dir: VEC3_UP
+                });
+
+                this.level.fixedLights.push({
+                    pos: pos,
+                    col: COLOR_FLAME_TORCH
+                });     
+            }
+        }
+    }
+
+    wallAdjacency(x, y){
+        if(x === 0 || x >= this.level.w || y === 0 || y >= this.level.h)
+            return null;
         
+        const center = x + y * this.level.w,
+            left = center + 1,
+            right = center - 1,
+            up = center + this.level.w,
+            down = center - this.level.w;
+
+        if(this.level.tiles[center] !== 0)
+            return null;
+
+        if( this.level.tiles[left] <= 0 &&
+            this.level.tiles[right] <= 0 &&
+            this.level.tiles[up] <= 0 &&
+            this.level.tiles[down] <= 0){
+                return null;
+        }
+
+        return [
+            this.level.tiles[left] > 1,
+            this.level.tiles[right] > 1,
+            this.level.tiles[up] > 1,
+            this.level.tiles[down] > 1,
+        ]
     }
 }
