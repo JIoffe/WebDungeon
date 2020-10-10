@@ -58,10 +58,12 @@ export const ParticleDefs = {
         emissionRate: 0, //One Shot 
         spread: 0.25,
 
-        lifetime: 700
+        lifetime: 700,
+
+        additive: false
     },
     torchfire0: {
-        mat: 'blood0',
+        mat: 'fire0',
         gravity: -0.00002,
         minPower: 0.003,
         maxPower: 0.01,
@@ -75,6 +77,8 @@ export const ParticleDefs = {
         emissionRate: 20, //One Shot 
         spread: 0.65,
 
-        lifetime: 0
+        lifetime: 0,
+
+        additive: true
     }
 }

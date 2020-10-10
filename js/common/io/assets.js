@@ -6,5 +6,6 @@ export const coreAssetList = [
     '/assets/materials/human0.json',
     '/assets/materials/dungeon1.json',
     '/assets/tilesets/dungeon1.json',
-    '/assets/materials/blood0.json'
+    '/assets/materials/blood0.json',
+    '/assets/materials/fire0.json'
 ]

@@ -513,6 +513,8 @@ export class Renderer{
         gl.uniform1f(ul.minLifetime, emitter.minLifetime)
         gl.uniform1f(ul.maxLifetime, emitter.maxLifetime)
 
+        gl.blendFunc(gl.SRC_ALPHA, emitter.additive ? gl.ONE : gl.ONE_MINUS_SRC_ALPHA);
+
         const mat = this.resources.materials[emitter.mat];
         if(!!mat){
             gl.bindTexture(gl.TEXTURE_2D, mat.diffuse);
