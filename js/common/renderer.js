@@ -256,7 +256,7 @@ export class Renderer{
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.resources.actorsIBuffer.buffer);
 
         //Bind lights and shadowmap
-        this.updateShaderLights(shader, scene.level.fixedLights, scene.players[0].pos[0], scene.players[0].pos[2]);
+        this.updateShaderLights(shader, scene, scene.players[0].pos[0], scene.players[0].pos[2]);
         gl.activeTexture(gl.TEXTURE3);
         gl.uniform1i(shader.uniformLocations.shadowTex, 3);
         gl.bindTexture(gl.TEXTURE_2D, this.shadowFBO[1])
@@ -370,7 +370,7 @@ export class Renderer{
                         if(t < 0)
                             continue;
 
-                        this.updateShaderLights(shader, scene.level.fixedLights, x << scene.level.spacing, y << scene.level.spacing);
+                        this.updateShaderLights(shader, scene, x << scene.level.spacing, y << scene.level.spacing);
                         gl.uniform3f(shader.uniformLocations.offset, x << scene.level.spacing, y << scene.level.spacing, scene.level.tiles[i+1]);
                         gl.drawElements(gl.TRIANGLES, m[t][0], gl.UNSIGNED_SHORT, m[t][1]);
                     }
@@ -457,17 +457,16 @@ export class Renderer{
         return [fbo, tex]
     }
 
-    updateShaderLights(shader, lights, x, y){
+    updateShaderLights(shader, scene, x, y){
         let i = 0, j = 0, k = 0;
-        lights = lights.slice()
-        lights.sort((a, b) => {
-            const distanceA = Math.pow(a.pos[0] - x, 2) + Math.pow(a.pos[2] - y, 2),
-                distanceB = Math.pow(b.pos[0] - x, 2) + Math.pow(b.pos[2] - y, 2);
 
-            return distanceA - distanceB;
-        });
+        const lights = scene.getKNearestLights(x, y, MAX_LIGHTS_PER_CALL);
+
         while(k < MAX_LIGHTS_PER_CALL){
             const l = lights[k];
+            if(!l)
+                break;
+                
             lightPositions[i++] = l.pos[0];
             lightPositions[i++] = l.pos[1];
             lightPositions[i++] = l.pos[2];
@@ -480,6 +479,7 @@ export class Renderer{
             ++k;
         }
 
+        gl.uniform1i(shader.uniformLocations.nLights, k);
         gl.uniform3fv(shader.uniformLocations.lightPositions, lightPositions, 0, i);
         gl.uniform4fv(shader.uniformLocations.lightColors, lightColors, 0, j);
         gl.uniform1iv(shader.uniformLocations.shadowIndices, shadowIndices, 0, k);

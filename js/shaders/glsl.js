@@ -320,6 +320,7 @@ export const FragmentShaders = {
     uniform sampler2D ${Uniforms.shadowTex};
 
     //RGB and alpha channel is intensity
+    uniform int ${Uniforms.nLights};
     uniform vec4 ${Uniforms.lightColors}[MAX_LIGHTS];
     uniform vec3 ${Uniforms.lightPositions}[MAX_LIGHTS];
     uniform int ${Uniforms.shadowIndices}[MAX_LIGHTS];
@@ -334,7 +335,7 @@ export const FragmentShaders = {
         vec4 diffuseColor = texture(${Uniforms.diffuse}, vTexCoords);
         vec3 lighting;
 
-        for(int i = 0; i < MAX_LIGHTS; ++i){
+        for(int i = 0; i < ${Uniforms.nLights}; ++i){
             if(${Uniforms.shadowIndices}[i] >= 0){
                 vec4 posInLight = ${Uniforms.matLight}[${Uniforms.shadowIndices}[i]] * vec4(vPosWorld, 1.);
                 vec3 projectedCoords = (posInLight.xyz / posInLight.w * 0.5) + vec3(.5,.5,.5);

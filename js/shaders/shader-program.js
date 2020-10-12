@@ -28,6 +28,7 @@ export const Uniforms = {
     lightPositions: 'uLightPositions',
     lightColors: 'uLightColors',
     shadowIndices: 'uShadowIndices',
+    nLights: 'uNLights',
 
     
     diffuse: 'uDiffuse',

@@ -25,6 +25,9 @@ const SLASH_FOV = 0.7;
 const cameraOffset = vec3.fromValues(0, 100, 30);
 const VEC3_UP = new Float32Array([0,1,0]);
 
+//Buffers to hold KNN lookups
+const KNNresultCache = [null,null,null,null,new Array(4)];
+
 export class Scene{
     constructor(tileset){
         this.players = [];
@@ -49,6 +52,20 @@ export class Scene{
 
         if(!!this.wallSolver){
             this.level.tiles = this.wallSolver.solve(this.level.w, this.level.h, this.level.tiles);
+        }
+
+        //Perhaps in the future a tree would be better for sparse data
+        //Otherwise, create buckets/sectors that span 4 tiles
+        this.graph = new Array((this.level.w >> 2) * (this.level.h >> 2));
+        this.graphSpacing = this.level.spacing + 2;
+        this.graphW = this.level.w >> 2;
+        this.graphH = this.level.h >> 2;
+        
+        let i = this.graph.length;
+        while(i--){
+            this.graph[i] = {
+                lights: []
+            }
         }
     }
 
@@ -398,6 +415,54 @@ export class Scene{
                 });     
             }
         }
+
+        let i = this.level.fixedLights.length;
+        const testSet = new Set();
+        while(i--){
+            testSet.clear();
+
+            const l = this.level.fixedLights[i];
+            const r = Math.sqrt(l.col[3]);
+
+            const graphX = l.pos[0] >> this.graphSpacing,
+                  graphY = l.pos[2] >> this.graphSpacing,
+                  minGraphX = graphX > 0 ? (l.pos[0] - r) >> this.graphSpacing : 0,
+                  maxGraphX = graphX < this.graphW - 1 ? (l.pos[0] + r) >> this.graphSpacing : this.graphW - 1,
+                  minGraphY = graphY > 0 ? (l.pos[2] - r) >> this.graphSpacing : 0,
+                  maxGraphY = graphY < this.graphH - 1 ? (l.pos[2] + r) >> this.graphSpacing : this.graphH - 1;
+
+            //Add to center and any extremes
+            testSet.add(graphX + graphY * this.graphW);
+            testSet.add(minGraphX + minGraphY * this.graphW);
+            testSet.add(minGraphX + maxGraphY * this.graphW);
+            testSet.add(maxGraphX + minGraphY * this.graphW);
+            testSet.add(maxGraphX + maxGraphY * this.graphW);
+
+            testSet.forEach(j => {
+                this.graph[j].lights.push(l);
+            })
+        }
+    }
+
+    getKNearestLights(x, y, k){
+        let graphX = x >> this.graphSpacing,
+            graphY = y >> this.graphSpacing;
+
+        const results = KNNresultCache[k];
+        results.fill(null);
+
+        let seek = this.graph[graphX + graphY * this.graphW].lights.sort((a, b) => {
+            const distanceA = Math.pow(a.pos[0] - x, 2) + Math.pow(a.pos[2] - y, 2),
+                distanceB = Math.pow(b.pos[0] - x, 2) + Math.pow(b.pos[2] - y, 2);
+
+            return distanceA - distanceB;
+        });
+
+        let i = Math.min(k, seek.length);
+        while(i--)
+            results[i] = seek[i];
+
+        return results;
     }
 
     wallAdjacency(x, y){
