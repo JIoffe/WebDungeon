@@ -1,0 +1,1 @@
+{"name": "dungeon2", "type": "MATERIAL", "textures": { "diffuse": {"src": "/assets/img/dungeon2.jpg", "bilinear": true, "genmips": true, "yflip":true}}}

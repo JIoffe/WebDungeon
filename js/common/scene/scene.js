@@ -9,6 +9,7 @@ import { PlayerState } from "./player-state";
 import { ARM_PLAYER } from "../constants/armatures";
 import { ActorFactory } from "../actors/actor-factory";
 import { COLOR_FLAME_TORCH } from "../constants/colors";
+import { WallSolver } from "./wall-solver";
 
 const MAX_ENEMIES = 200;
 
@@ -25,7 +26,7 @@ const cameraOffset = vec3.fromValues(0, 100, 30);
 const VEC3_UP = new Float32Array([0,1,0]);
 
 export class Scene{
-    constructor(){
+    constructor(tileset){
         this.players = [];
         this.actors = [];
         this.pveAttacks = [];
@@ -34,11 +35,34 @@ export class Scene{
         this.mainCamera = new Camera();
         this.time = 0;
 
+        this.tileset = tileset;
+
         this.effects = [];
 
         MessageBus.subscribe(MessageType.PLAYER_ADDED, data => this.onPlayerAdded(data))
         MessageBus.subscribe(MessageType.ACTOR_ADDED, data => this.onActorAdded(data));
         MessageBus.subscribe(MessageType.PARTICLESYSTEM_ADDED, data => this.onParticleSystemAdded(data));
+    }
+
+    onLevelLoaded(data){
+        this.level = data;
+
+        if(!!this.wallSolver){
+            this.level.tiles = this.wallSolver.solve(this.level.w, this.level.h, this.level.tiles);
+        }
+    }
+
+    onAssetLoaded(data){
+        if(!data)
+            return;
+
+        if(data.type !== 'MESH' || data.category != 'tilesets')
+            return;
+
+        this.wallSolver = new WallSolver(data);
+        if(!!this.level && !!this.level.tiles){
+            this.level.tiles = this.wallSolver.solve(this.level.w, this.level.h, this.level.tiles);
+        }
     }
 
     /* 
@@ -194,7 +218,7 @@ export class Scene{
             c = (pos[2] + dy + (dy > 0 ? r : -r)) >> 5
 
         let i = a + c * this.level.w
-        if(this.level.tiles[i] !== 0 || (a !== b && this.level.tiles[i+1] !== 0)){
+        if(this.level.tiles[i<<1] !== 0 || (a !== b && this.level.tiles[(i+1)<<1] !== 0)){
             dy = 0;
         }
 
@@ -203,7 +227,7 @@ export class Scene{
         c = (pos[0] + dx + (dx > 0 ? r : -r)) >> 5
 
         i = c + a * this.level.w
-        if(this.level.tiles[i] !== 0 || (a !== b && this.level.tiles[i+this.level.w] !== 0)){
+        if(this.level.tiles[i<<1] !== 0 || (a !== b && this.level.tiles[(i+this.level.w)<<1] !== 0)){
             dx = 0;
         }
 
@@ -329,18 +353,18 @@ export class Scene{
         for(let x = 1; x < this.level.w - 1; ++x){
             for(let y = 1; y < this.level.h - 1; ++y){
                 let i = x + y * this.level.w;
-                if(this.level.tiles[i] !== 0)
-                    continue;
+                // if(this.level.tiles[i] !== 0)
+                //     continue;
 
-                const wallLeft = this.level.tiles[i - 1] > 0 && this.level.tiles[i - this.level.w - 1] > 0,
-                    wallRight = this.level.tiles[i + 1] > 0 && this.level.tiles[i - this.level.w + 1] > 0,
-                    wallUp = this.level.tiles[i - this.level.w] > 0 && this.level.tiles[i - this.level.w - 1] > 0,
-                    wallDown = this.level.tiles[i + this.level.w] > 0 && this.level.tiles[i + this.level.w - 1] > 0;
+                // const wallLeft = this.level.tiles[i - 1] > 0 && this.level.tiles[i - this.level.w - 1] > 0,
+                //     wallRight = this.level.tiles[i + 1] > 0 && this.level.tiles[i - this.level.w + 1] > 0,
+                //     wallUp = this.level.tiles[i - this.level.w] > 0 && this.level.tiles[i - this.level.w - 1] > 0,
+                //     wallDown = this.level.tiles[i + this.level.w] > 0 && this.level.tiles[i + this.level.w - 1] > 0;
                 
-                if(!(wallLeft || wallRight || wallUp || wallDown))
-                    continue;
+                // if(!(wallLeft || wallRight || wallUp || wallDown))
+                //     continue;
 
-                if(Math.random() > 0.5)
+                if(Math.random() > 0.15)
                     continue;
 
                 

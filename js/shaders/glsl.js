@@ -4,11 +4,27 @@ export const VertexShaders = {
     staticlevel:
     `#version 300 es
     
+    //Constant matrices for flipping
+    const mat4 flipMatrices[4] = mat4[](
+        //S (DEFAULT)
+        mat4(   1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0),
+
+        //W
+        mat4(3.422854177870249e-8,0.,0.9999999403953552,0.,0.,1.,0.,0.,-0.9999999403953552,0.,3.422854177870249e-8,0.,32.,0.,0.,1.),
+
+        //N
+        mat4(-1.,0.,-1.2246468525851679e-16,0.,0.,1.,0.,0.,1.2246468525851679e-16,0.,-1,0.,32.,0.,32.,1.),
+
+        //E
+        mat4(3.422854177870249e-8,0.,-0.9999999403953552,0.,0.,1.,0.,0.,0.9999999403953552,0.,3.422854177870249e-8,0.,0.,0.,32.,1.)
+    );
+
     in vec4 ${Attributes.Pos};
     in vec2 ${Attributes.Tex};
     in vec3 ${Attributes.Norm};
 
-    uniform vec2 ${Uniforms.offset};
+    uniform vec3 ${Uniforms.offset};
     uniform mat4 ${Uniforms.matMVP};
 
     out vec3 vPosWorld;
@@ -16,7 +32,8 @@ export const VertexShaders = {
     out vec3 vNormal;
     
     void main(){
-        vec4 pos = ${Attributes.Pos} + vec4(${Uniforms.offset}.x, 0, ${Uniforms.offset}.y, 0);
+
+        vec4 pos = (flipMatrices[int(${Uniforms.offset}.z)] * ${Attributes.Pos}) + vec4(${Uniforms.offset}.x, 0, ${Uniforms.offset}.y, 0);
         gl_Position = ${Uniforms.matMVP} * pos;
 
         //pass through tex coords

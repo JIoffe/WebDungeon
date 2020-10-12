@@ -352,26 +352,26 @@ export class Renderer{
     
         if(!!scene.level){
             //Set static geometry texture (atlas)
-            const mat = this.resources.materials['dungeon1'];
+            const mat = this.resources.materials['dungeon2'];
 
             gl.activeTexture(gl.TEXTURE0);
             gl.uniform1i(shader.uniformLocations.diffuse, 0);
             gl.bindTexture(gl.TEXTURE_2D, mat.diffuse);
             
             if(!!scene.level.tiles){
-                const m = this.resources.meshes['dungeon1'];
+                const m = this.resources.meshes['dungeon2'];
 
                 let x = scene.level.w;
                 while(x--){
                     let y = scene.level.h;
                     while(y--){
-                        let i = x + y * scene.level.w;
+                        const i = (x + y * scene.level.w) << 1;
                         const t = scene.level.tiles[i];
                         if(t < 0)
                             continue;
 
                         this.updateShaderLights(shader, scene.level.fixedLights, x << scene.level.spacing, y << scene.level.spacing);
-                        gl.uniform2f(shader.uniformLocations.offset, x << scene.level.spacing, y << scene.level.spacing);
+                        gl.uniform3f(shader.uniformLocations.offset, x << scene.level.spacing, y << scene.level.spacing, scene.level.tiles[i+1]);
                         gl.drawElements(gl.TRIANGLES, m[t][0], gl.UNSIGNED_SHORT, m[t][1]);
                     }
                 }

@@ -5,7 +5,10 @@ class RestClientSingleton{
 
     async getJSON(path){
         const response = await fetch(path);
-        return await response.json();
+        const asset = await response.json();
+        asset.category = asset.category || path.match(/assets\/(.*)\//)[1];
+
+        return asset;
     }
 }
 

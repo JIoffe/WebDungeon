@@ -5,7 +5,25 @@ import { Scene } from "../common/scene/scene";
 import { MessageBus } from "../common/messaging/message-bus";
 import { MessageType } from "../common/messaging/message-type";
 import { RestClient } from "../common/http/rest-client";
-import { COLOR_FLAME_TORCH } from "../common/constants/colors";
+
+
+var matrix = mat4.create();
+var q = quat.create();
+
+console.log('MATRICES');
+quat.fromEuler(q, 0, 270 * Math.PI/180, 0);
+mat4.fromRotationTranslation(matrix, q, [32, 0, 0]);
+console.log(JSON.stringify(Array.from(matrix)));
+
+quat.fromEuler(q, 0, 180 * Math.PI/180, 0);
+mat4.fromRotationTranslation(matrix, q, [32, 0, 32]);
+console.log(JSON.stringify(Array.from(matrix)));
+
+quat.fromEuler(q, 0, 90 * Math.PI/180, 0);
+mat4.fromRotationTranslation(matrix, q, [0, 0, 32]);
+console.log(JSON.stringify(Array.from(matrix)));
+
+console.log('END MATRICES');
 
 (function(d){
     var renderer;
@@ -31,6 +49,7 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
         while(i--){
             const asset = await RestClient.getJSON(coreAssetList[i]);   
             await renderer.resources.onAssetLoaded(asset);
+            scene.onAssetLoaded(asset);
         }
 
         MessageBus.post(MessageType.PLAYER_ADDED, {
@@ -46,47 +65,41 @@ import { COLOR_FLAME_TORCH } from "../common/constants/colors";
             rRot: quat.create() //RENDER ROTATION
         })
 
-        //To mark the tile empty
-        const X = -1;
-        const A = 10;
-        const B = 11;
-        const C = 12;
-        const D = 13;
-        const E = 14;
-        const F = 15;
+        //Easier to visualize
+        const X = 0;
 
-        scene.level = {
+        scene.onLevelLoaded({
             w: 24,
             h: 24,
             spacing: 5,
             fixedLights: [],
-            tiles: [X,5,5,5,4,5,5,4,5,5,5,4,5,5,4,5,5,5,4,5,4,5,5,X,
-                    8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,
-                    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,A,
-                    8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,
-                    X,7,7,7,7,7,7,7,7,7,C,0,0,0,D,7,7,7,7,7,7,7,7,X,
-                    X,X,X,X,X,X,X,X,X,X,1,0,0,0,6,X,X,X,X,X,X,X,X,X,
-                    X,X,X,X,X,X,X,X,X,X,8,0,0,0,6,X,X,X,X,X,X,X,X,X,
-                    X,X,X,X,X,X,X,X,X,X,1,0,0,0,6,X,X,X,X,X,X,X,X,X,
-                    X,X,X,1,5,5,4,5,4,5,B,0,0,0,2,5,4,5,X,X,X,X,X,X,
-                    X,X,X,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,X,X,X,X,X,
-                    X,5,5,B,0,0,0,0,0,0,0,0,0,0,0,0,0,0,A,X,X,X,X,X,
-                    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,A,X,X,X,X,X,
-                    8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,X,X,X,X,X,
-                    1,0,0,0,0,0,0,D,7,7,7,7,7,7,7,7,7,7,X,X,X,X,X,X,
-                    1,0,0,0,0,0,0,6,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
-                    1,0,0,D,7,7,7,1,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
-                    8,0,0,6,X,X,X,X,X,X,X,X,X,X,X,X,5,5,5,4,4,5,5,X,
-                    1,0,0,A,X,X,X,X,X,X,X,X,1,4,5,B,0,0,0,0,0,0,0,6,
-                    8,0,0,2,5,4,5,4,5,X,X,X,8,0,0,0,0,0,0,0,0,0,0,A,
-                    1,0,0,0,0,0,0,0,0,6,X,X,1,0,0,0,0,0,0,0,0,0,0,A,
-                    1,0,0,0,0,0,0,0,0,A,X,X,8,0,0,0,0,0,0,0,0,0,0,6,
-                    8,0,0,0,0,0,0,0,0,2,4,5,B,0,0,0,0,0,0,D,7,7,7,X,
-                    8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,X,X,X,X,
-                    X,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,X,X,X,X]
-        }
+            tiles: [X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
+                    X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,
+                    X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,
+                    X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,
+                    X,X,X,X,X,X,X,X,X,X,X,1,1,1,X,X,X,X,X,X,X,X,X,X,
+                    X,X,X,X,X,X,X,X,X,X,X,1,1,1,X,X,X,X,X,X,X,X,X,X,
+                    X,X,X,X,X,X,X,X,X,X,X,1,1,1,X,X,X,X,X,X,X,X,X,X,
+                    X,X,X,X,X,X,X,X,X,X,X,1,1,1,X,X,X,X,X,X,X,X,X,X,
+                    X,X,X,X,X,X,X,X,X,X,X,1,1,1,X,X,X,X,X,X,X,X,X,X,
+                    X,X,X,X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,X,X,X,X,X,
+                    X,X,X,X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,X,X,X,X,X,
+                    X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,X,X,X,X,X,
+                    X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,X,X,X,X,X,
+                    X,1,1,1,1,1,1,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
+                    X,1,1,1,1,1,1,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
+                    X,1,1,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
+                    X,1,1,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
+                    X,1,1,X,X,X,X,X,X,X,X,X,X,X,X,X,1,1,1,1,1,1,1,X,
+                    X,1,1,X,X,X,X,X,X,X,X,X,X,1,1,1,1,1,1,1,1,1,1,X,
+                    X,1,1,1,1,1,1,1,1,X,X,X,X,1,1,1,1,1,1,1,1,1,1,X,
+                    X,1,1,1,1,1,1,1,1,X,X,X,X,1,1,1,1,1,1,1,1,1,1,X,
+                    X,1,1,1,1,1,1,1,1,X,X,X,X,1,1,1,1,1,1,X,X,X,X,X,
+                    X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,X,X,X,X,
+                    X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X]
+        });
 
-        scene.populateEnemies();
+        //scene.populateEnemies();
         scene.populateTorches();
 
         window.requestAnimationFrame(mainLoop);
