@@ -99,9 +99,6 @@ console.log('END MATRICES');
                     X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X]
         });
 
-        //scene.populateEnemies();
-        scene.populateTorches();
-
         window.requestAnimationFrame(mainLoop);
     });
 

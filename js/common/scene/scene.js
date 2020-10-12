@@ -50,10 +50,6 @@ export class Scene{
     onLevelLoaded(data){
         this.level = data;
 
-        if(!!this.wallSolver){
-            this.level.tiles = this.wallSolver.solve(this.level.w, this.level.h, this.level.tiles);
-        }
-
         //Perhaps in the future a tree would be better for sparse data
         //Otherwise, create buckets/sectors that span 4 tiles
         this.graph = new Array((this.level.w >> 2) * (this.level.h >> 2));
@@ -67,6 +63,12 @@ export class Scene{
                 lights: []
             }
         }
+
+        if(!!this.wallSolver){
+            this.level.tiles = this.wallSolver.solve(this.level.w, this.level.h, this.level.tiles);
+            this.populateTorches();
+            this.populateEnemies();
+        }
     }
 
     onAssetLoaded(data){
@@ -79,6 +81,8 @@ export class Scene{
         this.wallSolver = new WallSolver(data);
         if(!!this.level && !!this.level.tiles){
             this.level.tiles = this.wallSolver.solve(this.level.w, this.level.h, this.level.tiles);
+            this.populateTorches();
+            this.populateEnemies();
         }
     }
 
@@ -340,7 +344,7 @@ export class Scene{
             let x = Math.floor(posX >> this.level.spacing),
                 y = Math.floor(posY >> this.level.spacing);
 
-            if(this.level.tiles[x + y * this.level.w] === 0){
+            if(this.level.tiles[(x + y * this.level.w)<<1] === 0){
                 let isValidPosition = true;
                 for(let j = 0; j < enemies.length; ++j){
                     const other = enemies[j];
@@ -366,42 +370,55 @@ export class Scene{
     }
 
     populateTorches(){
-        //Torches are placed inbetween wall tiles, on the posts
+        //Torches are represented by special wall tiles that have torches on them
+        //
         for(let x = 1; x < this.level.w - 1; ++x){
             for(let y = 1; y < this.level.h - 1; ++y){
-                let i = x + y * this.level.w;
-                // if(this.level.tiles[i] !== 0)
-                //     continue;
-
-                // const wallLeft = this.level.tiles[i - 1] > 0 && this.level.tiles[i - this.level.w - 1] > 0,
-                //     wallRight = this.level.tiles[i + 1] > 0 && this.level.tiles[i - this.level.w + 1] > 0,
-                //     wallUp = this.level.tiles[i - this.level.w] > 0 && this.level.tiles[i - this.level.w - 1] > 0,
-                //     wallDown = this.level.tiles[i + this.level.w] > 0 && this.level.tiles[i + this.level.w - 1] > 0;
-                
-                // if(!(wallLeft || wallRight || wallUp || wallDown))
-                //     continue;
-
-                if(Math.random() > 0.15)
+                let i = (x + y * this.level.w)<<1;
+                if(this.wallSolver.walls.indexOf(this.level.tiles[i]) < 0)
                     continue;
 
+                if(Math.random() > 0.45)
+                    continue;
                 
                 //Determine position
-                let posX = (x << 5),
-                    posY = (y << 5);
+                let posX = (x << this.level.spacing),
+                    posY = (y << this.level.spacing);
+
+                switch(this.level.tiles[i+1]){
+                    case 1:
+                        posX -= 6;
+                        posY += 16;
+                        break;
+                    case 2:
+                        posX += 16;
+                        posY -= 8;
+                        break;
+                    case 3:
+                        posX += 40;
+                        posY += 16;
+                        break;
+                    default:
+                        posX += 16;
+                        posY += 38;
+                        break;
+                }
 
                 let nearLights = 0;
                 let n = this.level.fixedLights.length;
                 while(n-- && nearLights < 2){
                     const d = sqDist(posX, posY, this.level.fixedLights[n].pos[0], this.level.fixedLights[n].pos[2]);
-                    if(d <= 7200){
+                    if(d <= 3600){
                         nearLights++;
                     }
                 }
 
-                if(nearLights >= 2)
+                if(nearLights >= 3)
                     continue;
 
-                const pos = vec3.fromValues(posX, 30, posY);
+                this.level.tiles[i] = this.wallSolver.walltorches[0];
+
+                const pos = vec3.fromValues(posX, 28, posY);
                 this.onParticleSystemAdded(
                 {
                     type: 'torchfire0',
@@ -416,6 +433,7 @@ export class Scene{
             }
         }
 
+        //Add all lights to the graph for faster KNN lookups
         let i = this.level.fixedLights.length;
         const testSet = new Set();
         while(i--){
@@ -463,33 +481,5 @@ export class Scene{
             results[i] = seek[i];
 
         return results;
-    }
-
-    wallAdjacency(x, y){
-        if(x === 0 || x >= this.level.w || y === 0 || y >= this.level.h)
-            return null;
-        
-        const center = x + y * this.level.w,
-            left = center + 1,
-            right = center - 1,
-            up = center + this.level.w,
-            down = center - this.level.w;
-
-        if(this.level.tiles[center] !== 0)
-            return null;
-
-        if( this.level.tiles[left] <= 0 &&
-            this.level.tiles[right] <= 0 &&
-            this.level.tiles[up] <= 0 &&
-            this.level.tiles[down] <= 0){
-                return null;
-        }
-
-        return [
-            this.level.tiles[left] > 1,
-            this.level.tiles[right] > 1,
-            this.level.tiles[up] > 1,
-            this.level.tiles[down] > 1,
-        ]
     }
 }
