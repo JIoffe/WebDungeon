@@ -10,8 +10,8 @@ import { BaseActor } from "../base-actor";
  * Wanders aimlessly until players draw near, then chases and attacks relentlessly.
  */
 const trashTable = {
-    crabby: [ARM_CRABBY, 2, 8],
-    spider: [ARM_SPIDER, 2, 16]
+    crabby: [ARM_CRABBY, 2, 8, 1.],
+    spider: [ARM_SPIDER, 2, 16, 0.75]
 };
 
 const AGRO_DIST = 2600;
@@ -34,6 +34,8 @@ export class AggressiveTrash extends BaseActor{
 
         this.r = tableEntry[2];
         this.r2 = tableEntry[2]*tableEntry[2];
+
+        this.s = vec3.fromValues(tableEntry[3],tableEntry[3],tableEntry[3]);
     }
 
     update(scene, time, dT){

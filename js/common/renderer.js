@@ -210,7 +210,7 @@ export class Renderer{
                     continue;
                 }
                 
-                mat4.fromRotationTranslation(matMVP, quat.setAxisAngle(aRot, VEC3_UP, e.angle), e.pos);
+                mat4.fromRotationTranslationScale(matMVP, quat.setAxisAngle(aRot, VEC3_UP, e.angle), e.pos, e.s);
                 mat4.multiply(matMVP, matLight[li], matMVP);
                 gl.uniformMatrix4fv(shader.uniformLocations.matMVP, false, matMVP);
                 gl.uniform3fv(shader.uniformLocations.keyframes, e.anim.tween);
@@ -313,8 +313,7 @@ export class Renderer{
             if(!a)
                 continue;
 
-            mat4.fromRotationTranslationScale(matMVP, quat.setAxisAngle(aRot, VEC3_UP, e.angle), e.pos, [0.75, 0.75, 0.75]);
-            //mat4.fromRotationTranslation(matMVP, quat.setAxisAngle(aRot, VEC3_UP, e.angle), e.pos);
+            mat4.fromRotationTranslationScale(matMVP, quat.setAxisAngle(aRot, VEC3_UP, e.angle), e.pos, e.s);
             gl.uniformMatrix4fv(shader.uniformLocations.matWorld, false, matMVP);
             gl.uniform3fv(shader.uniformLocations.keyframes, e.anim.tween);
 
