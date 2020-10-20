@@ -358,8 +358,10 @@ export class Scene{
                 }
 
                 if(isValidPosition){
+                    //50 50 chance, either spider or crabby for now
+                    const type = Math.random() >= .5 ? 'spider' : 'crabby';
                     enemies.push({
-                        type: 'spider',
+                        type: type,
                         pos: vec3.fromValues(posX, 0, posY),
                         angle: Math.random() * 6,
                         state: 0
@@ -367,7 +369,7 @@ export class Scene{
                 }
             }
         }
-
+        enemies.sort((a, b) => a.type.localeCompare(b.type));
         MessageBus.post(MessageType.ACTOR_ADDED, enemies);
     }
 
