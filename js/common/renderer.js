@@ -313,7 +313,8 @@ export class Renderer{
             if(!a)
                 continue;
 
-            mat4.fromRotationTranslation(matMVP, quat.setAxisAngle(aRot, VEC3_UP, e.angle), e.pos);
+            mat4.fromRotationTranslationScale(matMVP, quat.setAxisAngle(aRot, VEC3_UP, e.angle), e.pos, [0.75, 0.75, 0.75]);
+            //mat4.fromRotationTranslation(matMVP, quat.setAxisAngle(aRot, VEC3_UP, e.angle), e.pos);
             gl.uniformMatrix4fv(shader.uniformLocations.matWorld, false, matMVP);
             gl.uniform3fv(shader.uniformLocations.keyframes, e.anim.tween);
 
@@ -466,7 +467,7 @@ export class Renderer{
             const l = lights[k];
             if(!l)
                 break;
-                
+
             lightPositions[i++] = l.pos[0];
             lightPositions[i++] = l.pos[1];
             lightPositions[i++] = l.pos[2];

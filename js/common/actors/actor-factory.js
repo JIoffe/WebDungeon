@@ -7,10 +7,8 @@ class ActorFactorySingleton{
 
     create(actorDef){
         switch(actorDef.type){
-            case 'crabby':
-                return new AggressiveTrash(actorDef.type, actorDef.pos, actorDef.angle, actorDef.state);
             default:
-                return null;
+                return new AggressiveTrash(actorDef.type, actorDef.pos, actorDef.angle, actorDef.state);
         }
     }
 }

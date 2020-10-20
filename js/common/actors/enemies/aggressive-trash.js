@@ -1,5 +1,5 @@
 import { vec3 } from "gl-matrix";
-import { ARM_CRABBY } from "../../constants/armatures";
+import { ARM_CRABBY, ARM_SPIDER } from "../../constants/armatures";
 import { sqDist2D } from "../../math";
 import { MessageBus } from "../../messaging/message-bus";
 import { MessageType } from "../../messaging/message-type";
@@ -10,7 +10,8 @@ import { BaseActor } from "../base-actor";
  * Wanders aimlessly until players draw near, then chases and attacks relentlessly.
  */
 const trashTable = {
-    crabby: [ARM_CRABBY, 2]
+    crabby: [ARM_CRABBY, 2, 8],
+    spider: [ARM_SPIDER, 2, 16]
 };
 
 const AGRO_DIST = 2600;
@@ -30,6 +31,9 @@ export class AggressiveTrash extends BaseActor{
         this.anim = Animations.getInstance(tableEntry[0]);
         this.hp = tableEntry[1];
         this.maxHP = this.hp;
+
+        this.r = tableEntry[2];
+        this.r2 = tableEntry[2]*tableEntry[2];
     }
 
     update(scene, time, dT){

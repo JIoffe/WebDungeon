@@ -1,0 +1,8 @@
+{
+	"type": "ASSETDEF",
+	"category": "ENEMY",
+	"name": "spider",
+	"mesh": "/assets/models/enemies/spider.json",
+	"mat": "/assets/materials/spider.json",
+	"arm": "/assets/animations/spider_anim.json"
+}

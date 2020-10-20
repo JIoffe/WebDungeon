@@ -14,10 +14,10 @@ from bpy.types import Operator
 # CONVERT FROM BLENDER TO RH Y UP (like OpenGL)
 axis_basis_change = mathutils.Matrix(((1.0, 0.0, 0.0, 0.0), (0.0, 0.0, 1.0, 0.0), (0.0, -1.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)))
 
-def assemble_matrix(bone, y_is_up):
+def assemble_matrix(armature, bone, y_is_up):
     # compare the current pose to the bind pose to see the relative offset
-    pose = bone.matrix.copy()
-    bind_pose = bone.bone.matrix_local.copy()
+    pose = armature.matrix_world @ bone.matrix.copy()
+    bind_pose = armature.matrix_world @ bone.bone.matrix_local.copy()
         
     if y_is_up:
         pose = axis_basis_change @ pose
@@ -145,14 +145,16 @@ class ExportArmatureJSON(Operator, ExportHelper):
             animationExport.keyframes.sort()
 
             # Gather data at each keyframe
-            for frame in animationExport.keyframes:                    
-                bpy.context.scene.frame_set(frame)
+            for frame in animationExport.keyframes:   
+                # Set the frame a few times so that the IKs resolve    
+                for _ in range(0, 10):
+                    bpy.context.scene.frame_set(frame)
                 
                 # write each matrix in order
                 # these matrices are stored as a very long HEX string per keyframe
                 bones = [armature.pose.bones[bone] for bone in armatureExport.bones]
                 for bone in bones:
-                    bind_matrix = assemble_matrix(bone, self.y_is_up)
+                    bind_matrix = assemble_matrix(armature, bone, self.y_is_up)
         
                     for column in range(0, 4):
                         for row in range(0, 4):

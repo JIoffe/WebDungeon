@@ -104,6 +104,8 @@ export class Scene{
 
         player.lookX = 0
         player.lookY = 1
+        player.r = PLAYER_RADIUS;
+        player.r2 = PLAYER_RADIUS*PLAYER_RADIUS;
 
         this.players.push(player);
         this.localPlayer = player;
@@ -357,7 +359,7 @@ export class Scene{
 
                 if(isValidPosition){
                     enemies.push({
-                        type: 'crabby',
+                        type: 'spider',
                         pos: vec3.fromValues(posX, 0, posY),
                         angle: Math.random() * 6,
                         state: 0
