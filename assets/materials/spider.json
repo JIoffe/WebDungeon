@@ -1,0 +1,1 @@
+{"name": "spider", "type": "MATERIAL", "textures": { "diffuse": {"src": "/assets/img/spider.png", "bilinear": true, "genmips": true, "yflip":true}}}

@@ -221,6 +221,30 @@ export class Scene{
         while(i--){
             this.actors[i].update(this, time, dT);
         }
+
+        // i = this.actors.length;
+        // while(i--){
+        //     let a = this.actors[i];
+        //     let dx = a.pos[0] - this.localPlayer.pos[0],
+        //         dy = a.pos[2] - this.localPlayer.pos[2];
+
+        //     if(dx > PLAYER_RADIUS || dy > PLAYER_RADIUS)
+        //         continue;
+
+        //     let d = dx*dx + dy*dy;
+        //     if(d >= ACTOR_SQ_RADIUS)
+        //         continue;
+
+        //     d = Math.sqrt(d);
+        //     let w = PLAYER_RADIUS/d;
+        //     dx *= w;
+        //     dy *= w;
+        //     // a.pos[0] += dx;
+        //     // a.pos[2] += dy;
+
+        //     this.localPlayer.pos[0] = a.pos[0] - dx;
+        //     this.localPlayer.pos[2] = a.pos[2] - dy;
+        // }
     }
 
     /**
@@ -254,8 +278,7 @@ export class Scene{
             dx = 0;
         }
 
-        pos[0] += dx
-        pos[2] += dy
+
 
         //clip against actors
         i = this.actors.length;
@@ -266,14 +289,18 @@ export class Scene{
                 continue;
                 
             const p2 = actor2.pos
+            
             if(sqDist(pos[0], pos[2] + dy, p2[0], p2[2]) < ACTOR_SQ_RADIUS){
-                dx = pos[0] - p2[0], dy = pos[2] - p2[2]
-                const w = PLAYER_RADIUS/Math.sqrt(dx*dx+dy*dy)
-                pos[0] = p2[0] + dx * w
-                pos[2] = p2[2] + dy * w
-                break;
-            }         
+                dy = 0;
+            }        
+            
+            if(sqDist(pos[0] + dx, pos[2], p2[0], p2[2]) < ACTOR_SQ_RADIUS){
+                dx = 0;
+            }     
         }
+
+        pos[0] += dx
+        pos[2] += dy
     }
 
     cameraToPlayer(player){
