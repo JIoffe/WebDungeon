@@ -417,12 +417,6 @@ export const FragmentShaders = {
                     }
 
                     shadow = clamp(shadow, 0., 1.);
-                    // float shadowDepth = texture(${Uniforms.shadowTex}, projectedCoords.xy).r;
-        
-                    // if(shadowDepth < (projectedCoords.z - bias)){
-                    //     //No direct contribution from this light, ignore
-                    //     shadow = 0.;
-                    // }
                 }
             }
 
