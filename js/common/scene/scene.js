@@ -221,30 +221,6 @@ export class Scene{
         while(i--){
             this.actors[i].update(this, time, dT);
         }
-
-        // i = this.actors.length;
-        // while(i--){
-        //     let a = this.actors[i];
-        //     let dx = a.pos[0] - this.localPlayer.pos[0],
-        //         dy = a.pos[2] - this.localPlayer.pos[2];
-
-        //     if(dx > PLAYER_RADIUS || dy > PLAYER_RADIUS)
-        //         continue;
-
-        //     let d = dx*dx + dy*dy;
-        //     if(d >= ACTOR_SQ_RADIUS)
-        //         continue;
-
-        //     d = Math.sqrt(d);
-        //     let w = PLAYER_RADIUS/d;
-        //     dx *= w;
-        //     dy *= w;
-        //     // a.pos[0] += dx;
-        //     // a.pos[2] += dy;
-
-        //     this.localPlayer.pos[0] = a.pos[0] - dx;
-        //     this.localPlayer.pos[2] = a.pos[2] - dy;
-        // }
     }
 
     /**

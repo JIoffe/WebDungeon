@@ -42,10 +42,12 @@ export class WebGLResourceManager{
         //Load basic shaders
         const gl = this.gl;
         //SKINNED CHARACTERS - like player characters, enemies
-        this.shaders.push(new ShaderProgram(gl, VertexShaders.skinnedmesh, FragmentShaders.textured_lit));
+        //this.shaders.push(new ShaderProgram(gl, VertexShaders.skinnedmesh, FragmentShaders.textured_lit));
+        this.shaders.push(new ShaderProgram(gl, VertexShaders.skinnedmesh, FragmentShaders.textured_lit_pcf));
 
         //Static level tileset geometry
-        this.shaders.push(new ShaderProgram(gl, VertexShaders.staticlevel, FragmentShaders.textured_lit));
+        //this.shaders.push(new ShaderProgram(gl, VertexShaders.staticlevel, FragmentShaders.textured_lit));
+        this.shaders.push(new ShaderProgram(gl, VertexShaders.staticlevel, FragmentShaders.textured_lit_pcf));
 
         //Shadows - skinned
         this.shaders.push(new ShaderProgram(gl, VertexShaders.skinnedmesh_shadow, FragmentShaders.white));

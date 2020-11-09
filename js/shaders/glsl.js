@@ -365,7 +365,78 @@ export const FragmentShaders = {
         color.rgb *= lighting;
     }
     `,
+    textured_lit_pcf:
+    `#version 300 es
+    precision mediump float;
+    
+    const int MAX_LIGHTS = 4;
+    const float bias = 0.0003;
+    const vec3 ambience = vec3(0.3,0.3, 0.4);
 
+    uniform mat4 ${Uniforms.matLight}[4];
+    uniform vec4 ${Uniforms.shadowCoords}[4]; //pairs of min and max coords
+    uniform sampler2D ${Uniforms.diffuse};
+    uniform sampler2D ${Uniforms.shadowTex};
+
+    //RGB and alpha channel is intensity
+    uniform int ${Uniforms.nLights};
+    uniform vec4 ${Uniforms.lightColors}[MAX_LIGHTS];
+    uniform vec3 ${Uniforms.lightPositions}[MAX_LIGHTS];
+    uniform int ${Uniforms.shadowIndices}[MAX_LIGHTS];
+
+    in vec2 vTexCoords;
+    in vec3 vPosWorld;
+    in vec3 vNormal;
+
+    out vec4 color;
+    
+    void main() {
+        vec4 diffuseColor = texture(${Uniforms.diffuse}, vTexCoords);
+        vec3 lighting;
+
+        for(int i = 0; i < ${Uniforms.nLights}; ++i){
+            float shadow = 1.;
+
+            if(${Uniforms.shadowIndices}[i] >= 0){
+                vec4 posInLight = ${Uniforms.matLight}[${Uniforms.shadowIndices}[i]] * vec4(vPosWorld, 1.);
+                vec3 projectedCoords = (posInLight.xyz / posInLight.w * 0.5) + vec3(.5,.5,.5);
+        
+                if(projectedCoords.x >= 0. && projectedCoords.y >= 0. && projectedCoords.x <= 1.0 && projectedCoords.y <= 1.0){
+                    vec4 shadowCoord = ${Uniforms.shadowCoords}[${Uniforms.shadowIndices}[i]];
+                    projectedCoords.x = mix(shadowCoord.x, shadowCoord.z, projectedCoords.x);
+                    projectedCoords.y = mix(shadowCoord.y, shadowCoord.w, projectedCoords.y);
+
+                    //Blur out in 3x3 kernel
+                    for (float y = -1.5 ; y <= 1.5 ; y += 1.0){
+                        for (float x = -1.5 ; x <= 1.5 ; x += 1.0){
+                            float shadowDepth = texture(${Uniforms.shadowTex}, projectedCoords.xy + vec2(x * 0.001, y * 0.001)).r;
+                            if(shadowDepth < (projectedCoords.z - bias)){
+                                shadow -= 0.11;
+                            }
+                        }
+                    }
+
+                    shadow = clamp(shadow, 0., 1.);
+                    // float shadowDepth = texture(${Uniforms.shadowTex}, projectedCoords.xy).r;
+        
+                    // if(shadowDepth < (projectedCoords.z - bias)){
+                    //     //No direct contribution from this light, ignore
+                    //     shadow = 0.;
+                    // }
+                }
+            }
+
+            vec3 vLD = ${Uniforms.lightPositions}[i] - vPosWorld;
+            float sd = clamp(dot(vLD, vLD), 0., ${Uniforms.lightColors}[i].w);
+            lighting += shadow * clamp(dot(normalize(vNormal), -normalize(vLD)), 0., 1.) * (1. - sd / ${Uniforms.lightColors}[i].w) * ${Uniforms.lightColors}[i].xyz;
+        }
+
+        lighting += ambience;
+
+        color = texture(${Uniforms.diffuse}, vTexCoords);
+        color.rgb *= lighting;
+    }
+    `,
     vertex_paint:
     `#version 300 es
     precision mediump float;
