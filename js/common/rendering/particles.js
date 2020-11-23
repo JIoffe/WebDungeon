@@ -74,7 +74,7 @@ export const ParticleDefs = {
         minLifetime: 300.0,
         maxLifetime: 700.0,
 
-        emissionRate: 20, //One Shot 
+        emissionRate: 20,
         spread: 0.65,
 
         lifetime: 0,
