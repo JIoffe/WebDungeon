@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>AI Test</title>
+        <meta charset="UTF-8"/>
+        <script>
+            (function(d){
+                const TIME_LIMIT = 100000;
+                //The features passed to this brain:
+                //DX to player
+                //DY to player
+
+                //Hidden layer of 3, output layer of 2
+                let model = makeModel(2, [3, 2]);
+
+                //Keep it tidy in a class
+
+                var isPaused = true;
+                var isTraining = false;
+
+                let traineeX = -100, traineeY = -100;
+
+                const MONSTER_SPEED = 0.002;
+
+                const ACTOR_RADIUS = 8;
+
+                const LEVEL_WIDTH = 24;
+                const LEVEL_HEIGHT = 24;
+                const TILE_WIDTH = 32;
+                const X = 0;
+                const tiles =  [X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
+                                X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,
+                                X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,
+                                X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,
+                                X,X,X,X,X,X,X,X,X,X,X,1,1,1,X,X,X,X,X,X,X,X,X,X,
+                                X,X,X,X,X,X,X,X,X,X,X,1,1,1,X,X,X,X,X,X,X,X,X,X,
+                                X,X,X,X,X,X,X,X,X,X,X,1,1,1,X,X,X,X,X,X,X,X,X,X,
+                                X,X,X,X,X,X,X,X,X,X,X,1,1,1,X,X,X,X,X,X,X,X,X,X,
+                                X,X,X,X,X,X,X,X,X,X,X,1,1,1,X,X,X,X,X,X,X,X,X,X,
+                                X,X,X,X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,X,X,X,X,X,
+                                X,X,X,X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,X,X,X,X,X,
+                                X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,X,X,X,X,X,
+                                X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,X,X,X,X,X,
+                                X,1,1,1,1,1,1,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
+                                X,1,1,1,1,1,1,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
+                                X,1,1,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
+                                X,1,1,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
+                                X,1,1,X,X,X,X,X,X,X,X,X,X,X,X,X,1,1,1,1,1,1,1,X,
+                                X,1,1,X,X,X,X,X,X,X,X,X,X,1,1,1,1,1,1,1,1,1,1,X,
+                                X,1,1,1,1,1,1,1,1,X,X,X,X,1,1,1,1,1,1,1,1,1,1,X,
+                                X,1,1,1,1,1,1,1,1,X,X,X,X,1,1,1,1,1,1,1,1,1,1,X,
+                                X,1,1,1,1,1,1,1,1,X,X,X,X,1,1,1,1,1,1,X,X,X,X,X,
+                                X,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,X,X,X,X,X,
+                                X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X];
+
+                const playerX = 180, playerY = 80;
+
+                d.addEventListener('DOMContentLoaded', () => {
+                    d.getElementById('c').addEventListener('click', ev => {
+                        if(isPaused){
+                            let rect = ev.target.getBoundingClientRect();
+
+                            traineeX = ev.pageX - rect.left;
+                            traineeY = ev.pageY - rect.top;
+                        }
+                    });
+
+                    d.getElementById('btn-start').addEventListener('click', ev => {
+                        isTraining = true; isPaused = false;
+                    });
+
+                    d.getElementById('btn-pause').addEventListener('click', ev => isPaused = !isPaused);
+
+                    requestAnimationFrame(trainLoop);
+                });
+
+                function evolveModels(){
+                    
+                }
+
+                function makeModel(nInputs, layers){
+                    let model = [];
+
+                    let nPrevInputs = nInputs;
+                    for(let i = 0; i < layers.length; ++i){
+                        let layer = [];
+                        let j = layers[i];
+                        while(j--){
+                            let weights = new Float32Array(nPrevInputs);
+                            let k = nPrevInputs;
+                            while(k--){
+                                weights[k] = Math.random() * 2 - 1;
+                            }
+
+                            layer.push(weights);
+                        }
+                        nPrevInputs = layer.length;
+                        model.push(layer);
+                    }
+
+                    console.log('made new model: ', model);
+                    return model;
+                }
+
+                function trainLoop(dT){
+
+                    document.getElementById('tb-fitness').value = fitness();
+
+                    if(!isPaused){
+                        if(isTraining){
+                            predictAndMove(dT);
+                        }
+                    }
+
+                    render();
+                    requestAnimationFrame(trainLoop);
+                }
+
+                function randomizeModel(){
+                    let i = weights.length;
+                    while(i--){
+                        let j = weights[i].length;
+                        while(j--){
+                            weights[i][j] = Math.random() * 2 - 1;
+                        }
+                    }
+                }
+
+                function predictAndMove(dT){
+                    let dx = playerX - traineeX,
+                        dy = playerY - traineeY;
+
+                    let input = [dx, dy];
+                    let output;
+                    for(let i = 0; i < model.length; ++i){
+                        let layer = model[i];
+
+                        let j = layer.length;
+                        output = new Array(j).fill(0);
+                        while(j--){
+                            let k = input.length;
+                            while(k--){
+                                output[j] += layer[j][k] * input[k];
+                            }
+                        }
+                        input = output.slice()
+                    }
+
+                    //Normalize
+                    dx = output[0]*output[0];
+                    dy = output[1]*output[1];
+                    const w = 1/Math.sqrt(dx + dy);
+                    output[0] *= w;
+                    output[1] *= w;
+
+                    traineeX += output[0] * dT *  MONSTER_SPEED;
+                    traineeY += output[1] * dT * MONSTER_SPEED;
+
+                    console.log(traineeX, traineeY);
+                }
+
+                function render(){
+                    const canvas = d.getElementById('c'),
+                        ctx    = canvas.getContext('2d'),
+                        w      = LEVEL_WIDTH * TILE_WIDTH,
+                        h      = LEVEL_HEIGHT * TILE_WIDTH;
+                      
+                    canvas.setAttribute('width', w + '');
+                    canvas.setAttribute('height', h + '');
+
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(0, 0, w, h);
+
+                    ctx.fillStyle = '#00F';
+                    for(let x = 0; x < LEVEL_WIDTH; ++x){
+                        for(let y = 0; y < LEVEL_HEIGHT; ++y){
+                            const i = x + y * LEVEL_WIDTH;
+                            if(tiles[i] === X){
+                                ctx.fillRect(x * TILE_WIDTH, y * TILE_WIDTH, TILE_WIDTH, TILE_WIDTH);
+                            }
+                        }
+                    }
+
+                    //Draw player - green circle
+                    ctx.fillStyle = '#0F0';
+                    ctx.beginPath();
+                    ctx.arc(playerX, playerY, ACTOR_RADIUS, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    //Draw trainee - red circle
+                    ctx.fillStyle = '#F00';
+                    ctx.beginPath();
+                    ctx.arc(Math.floor(traineeX), Math.floor(traineeY), ACTOR_RADIUS, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+
+                function fitness(){
+                    return Math.abs(traineeX - playerX) + Math.abs(traineeY - playerY);
+                }
+            })(document);
+        </script>
+        <style>
+            .toolbox{
+                background: #DDD;
+                border: double;
+                padding: 1em;
+            }
+            .toolbox label {
+                display: block;
+            }
+            .toolbox table td {
+                vertical-align: top;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="toolbox">
+            <table>
+                <tr>
+                    <td>
+                        <label>
+                            <span>Epoch:</span>
+                            <input id="tb-epoch" type="number" readonly/>
+                        </label>
+                        <label>
+                            <span>Current Fitness:</span>
+                            <input id="tb-fitness" type="number" readonly/>
+                        </label>
+                    </td>
+                    <td>
+                        <label>
+                            <span>Weights:</span>
+                            <input id="tb-weights" type="text" readonly></textarea>
+                        </label>
+                        <label>
+                            <span>Bias:</span>
+                            <input id="tb-weights" type="text" readonly></textarea>
+                        </label>
+                    </td>
+                </tr>
+            </table>
+            <button id="btn-start">Train</button>
+            <button id="btn-pause">Pause</button>
+            <button id="btn-clear">Clear</button>
+        </div>
+        <canvas id="c"></canvas>
+    </body>
+</html>
